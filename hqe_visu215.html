@@ -223,10 +223,9 @@ function deleteRoom(id) {
   render();
 }
 
-function updateRoom(roomId, field, value) {
+function updateRoom(roomId, field, value, { full = true } = {}) {
   const room = state.rooms.find(r => r.id === roomId);
   if (!room) return;
-
   if (field === 'glazedFacades') {
     const n = parseInt(value);
     room.glazedFacades = n;
@@ -237,7 +236,7 @@ function updateRoom(roomId, field, value) {
   } else {
     room[field] = value;
   }
-  render();
+  full ? render() : renderResultsOnly();
 }
 
 function updateFacade(roomId, facadeId, field, value) {
@@ -245,7 +244,7 @@ function updateFacade(roomId, facadeId, field, value) {
   const facade = room && room.facades.find(f => f.id === facadeId);
   if (!facade) return;
   facade[field] = value;
-  render();
+  renderResultsOnly();
 }
 
 function updateAdv(roomId, facadeId, field, value) {
@@ -253,7 +252,7 @@ function updateAdv(roomId, facadeId, field, value) {
   const facade = room && room.facades.find(f => f.id === facadeId);
   if (!facade) return;
   facade.adv[field] = value;
-  render();
+  renderResultsOnly();
 }
 
 function toggleAdv(roomId, facadeId) {
@@ -396,6 +395,25 @@ function render() {
   }
 }
 
+// Light update: only patches result boxes, d displays, and summary.
+// Does NOT touch input fields → cursor position is preserved.
+function renderResultsOnly() {
+  state.rooms.forEach(room => {
+    const resultEl = document.getElementById('result-' + room.id);
+    if (resultEl) resultEl.innerHTML = resultHTML(room, Scoring.computeRoom(room));
+
+    // Update d displays in open advanced panels
+    room.facades.forEach((f, i) => {
+      const dEl = document.getElementById('d-disp-' + room.id + '-' + f.id);
+      if (!dEl) return;
+      const autoD = computeD(room, i);
+      dEl.style.color = autoD !== null ? 'var(--primary)' : 'var(--muted)';
+      dEl.textContent = autoD !== null ? autoD + ' m' : '— enter room depth p above';
+    });
+  });
+  renderSummary();
+}
+
 function renderProjectBar() {
   const sel = document.getElementById('project-urban-context');
   if (!sel) return;
@@ -505,7 +523,7 @@ function roomHTML(room) {
         </details>
       ` : ''}
 
-      ${resultHTML(room, result)}
+      <div id="result-${room.id}">${resultHTML(room, result)}</div>
     </div>
   </div>`;
 }
@@ -548,7 +566,7 @@ function facadeHTML(room, f, facadeIndex) {
       <div class="adv-grid">
         <div class="adv-field">
           <label>d – Observer distance from window (m)</label>
-          <div style="padding:5px 8px;background:#f3f4f6;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:monospace;color:${autoD !== null ? 'var(--primary)' : 'var(--muted)'};">
+          <div id="d-disp-${room.id}-${f.id}" style="padding:5px 8px;background:#f3f4f6;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:monospace;color:${autoD !== null ? 'var(--primary)' : 'var(--muted)'};">
             ${autoD !== null ? autoD + ' m' : '— enter room depth p above'}
           </div>
         </div>
@@ -769,8 +787,11 @@ document.addEventListener('input', e => {
   const el = e.target;
   const action = el.dataset && el.dataset.action;
   if (!action) return;
+  // Only number inputs fire here during typing — update state + patch results,
+  // never re-render the inputs themselves so the cursor is never disturbed.
   if (action === 'update-room') {
-    updateRoom(el.dataset.room, el.dataset.field, el.type === 'checkbox' ? el.checked : el.value);
+    // roomP1/roomP2/name: value-only update
+    updateRoom(el.dataset.room, el.dataset.field, el.value, { full: false });
   } else if (action === 'update-facade') {
     updateFacade(el.dataset.room, el.dataset.facade, el.dataset.field, el.value);
   } else if (action === 'update-adv') {
@@ -782,8 +803,9 @@ document.addEventListener('change', e => {
   const el = e.target;
   const action = el.dataset && el.dataset.action;
   if (!action) return;
+  // Radios, selects, checkboxes — structural changes that need a full re-render.
   if (action === 'update-room') {
-    updateRoom(el.dataset.room, el.dataset.field, el.type === 'checkbox' ? el.checked : el.value);
+    updateRoom(el.dataset.room, el.dataset.field, el.type === 'checkbox' ? el.checked : el.value, { full: true });
   } else if (action === 'update-project') {
     updateProject(el.dataset.field, el.value);
   }

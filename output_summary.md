@@ -98,23 +98,6 @@ Where:
 
 ---
 
-## Special Cases
-
-- **Warehouse (excluding cold storage):** the zone to consider is the preparation/staging area.
-- **Known workstation positions:** calculation may use a focal point defined by the applicant.
-- **Openings on multiple walls:** the reference point remains the same (¾ or ½ depth depending on the number of glazed facades).
-
-### Renovation / Operation – Building Axis
-
-- Level E (4 points) is achieved if **Article R4223-3 of the French Labour Code** is met.
-- To reach a higher level, a full access-to-views calculation is required.
-
-### Operation – Management Axis
-
-- This indicator is **not taken into account**.
-
----
-
 ## Final Scoring
 
 Points are assigned by room type according to the "Evaluation Scales" tables in the document:
