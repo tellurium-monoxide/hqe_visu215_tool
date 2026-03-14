@@ -126,7 +126,12 @@
     .schip { display: inline-block; padding: 2px 9px; border-radius: 10px; font-weight: 700; font-size: 12px; }
     .no-rooms { text-align: center; color: var(--muted); padding: 20px; font-style: italic; }
 
-    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+    /* Project settings bar */
+    .project-bar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .project-bar .field-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    .project-bar select { min-width: 220px; }
 
     @media (max-width: 600px) {
       .form-row { flex-direction: column; }
@@ -146,6 +151,16 @@
   <div class="toolbar">
     <button class="btn-primary" id="btn-add-room">+ Add Room</button>
     <button class="btn-secondary btn-sm" id="btn-clear-all">Clear all</button>
+  </div>
+  <div class="project-bar">
+    <div>
+      <div class="field-label">Urban Context — applies to all rooms</div>
+      <select id="project-urban-context" data-action="update-project" data-field="urbanContext"></select>
+    </div>
+    <div style="font-size:12px;color:var(--muted);max-width:340px;line-height:1.6;">
+      The urban context determines which view components (sky, landscape, ground) are expected for each floor level.
+      It is a property of the building's surroundings, not of individual rooms.
+    </div>
   </div>
   <div id="rooms-container"></div>
   <div id="summary-container"></div>
@@ -170,7 +185,7 @@ const COMP_POINTS = { all_three: 6, two_of_three: 5, landscape: 4, sky_or_ground
 
 // ─── STATE ─────────────────────────────────────────────────────────────────────
 
-let state = { rooms: [] };
+let state = { urbanContext: 'urban', rooms: [] };
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 
@@ -188,12 +203,16 @@ function addRoom() {
   state.rooms.push({
     id: uid(),
     name: 'Room ' + (state.rooms.length + 1),
-    urbanContext: 'urban',
     floorType: 'intermediate',
     glazedFacades: 1,
     windowless: false,
     facades: [newFacade(1)],
   });
+  render();
+}
+
+function updateProject(field, value) {
+  state[field] = value;
   render();
 }
 
@@ -292,7 +311,7 @@ const Scoring = {
     const distBand = this.distanceBand(worst.distance);
     if (!distBand) return null;
 
-    const compInfo = this.expectedComponents(room.urbanContext, room.floorType);
+    const compInfo = this.expectedComponents(state.urbanContext, room.floorType);
 
     let skyVis = null, groundVis = null;
     if (worst.advOn) {
@@ -322,6 +341,7 @@ function render() {
     selEnd = ae.selectionEnd;
   }
 
+  renderProjectBar();
   renderRooms();
   renderSummary();
 
@@ -332,6 +352,14 @@ function render() {
       if (selStart !== null) try { el.setSelectionRange(selStart, selEnd); } catch(e) {}
     }
   }
+}
+
+function renderProjectBar() {
+  const sel = document.getElementById('project-urban-context');
+  if (!sel) return;
+  sel.innerHTML = Object.entries(URBAN_CONTEXTS)
+    .map(([k, v]) => `<option value="${k}"${state.urbanContext === k ? ' selected' : ''}>${v}</option>`)
+    .join('');
 }
 
 function renderRooms() {
@@ -345,11 +373,7 @@ function renderRooms() {
 
 function roomHTML(room) {
   const result = Scoring.computeRoom(room);
-  const isPeriRural = room.urbanContext === 'peri_rural';
-
-  const urbanOptions = Object.entries(URBAN_CONTEXTS)
-    .map(([k, v]) => `<option value="${k}"${room.urbanContext === k ? ' selected' : ''}>${v}</option>`)
-    .join('');
+  const isPeriRural = state.urbanContext === 'peri_rural';
 
   const floorSegment = `
     <div class="seg">
@@ -388,12 +412,8 @@ function roomHTML(room) {
     </div>
     <div class="card-body">
       <div class="form-row">
-        <div class="form-group wide">
-          <label class="field-label">Urban Context</label>
-          <select data-action="update-room" data-room="${room.id}" data-field="urbanContext">${urbanOptions}</select>
-        </div>
         <div class="form-group">
-          <label class="field-label">${isPeriRural ? 'Floor level (all equal in this context)' : 'Floor Level'}</label>
+          <label class="field-label">${isPeriRural ? 'Floor level (all equal in peri-urban/rural)' : 'Floor Level'}</label>
           ${floorSegment}
         </div>
       </div>
@@ -559,7 +579,6 @@ function renderSummary() {
     const [bg, fg] = scoreColors(pts);
     return `<tr${result && result.mismatch ? ' class="warn-row"' : ''}>
       <td><strong>${esc(room.name)}</strong></td>
-      <td>${URBAN_CONTEXTS[room.urbanContext]}</td>
       <td>${room.windowless ? '—' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate')}</td>
       <td>${result ? result.worstFacade.distance + ' m' : room.windowless ? '0 m' : '—'}</td>
       <td>${result ? result.distBand.label : room.windowless ? 'Windowless' : '—'}</td>
@@ -571,12 +590,12 @@ function renderSummary() {
   c.innerHTML = `
   <div class="summary-section">
     <div class="summary-head">
-      <h2>Summary</h2>
+      <h2>Summary <span style="font-size:13px;font-weight:400;color:var(--muted);">— ${esc(URBAN_CONTEXTS[state.urbanContext])}</span></h2>
       <button class="btn-secondary btn-sm" id="btn-csv">Copy as CSV</button>
     </div>
     <table>
       <thead><tr>
-        <th>Room</th><th>Urban Context</th><th>Floor</th>
+        <th>Room</th><th>Floor</th>
         <th>Min Distance</th><th>Distance Band</th><th>Components</th><th>Score</th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -659,12 +678,12 @@ function crossSectionSVG() {
 // ─── CSV EXPORT ─────────────────────────────────────────────────────────────────
 
 function copyCSV() {
-  const headers = ['Room','Urban Context','Floor','Min Distance (m)','Distance Band','Components','Score (pts)'];
+  const headers = ['Room','Floor','Min Distance (m)','Distance Band','Components','Score (pts)'];
   const rows = state.rooms.map(room => {
     const result = Scoring.computeRoom(room);
     const pts = result ? result.pts : (room.windowless ? 0 : '');
     return [
-      room.name, URBAN_CONTEXTS[room.urbanContext],
+      room.name,
       room.windowless ? '' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate'),
       result ? result.worstFacade.distance : room.windowless ? '0' : '',
       result ? result.distBand.label : room.windowless ? 'Windowless' : '',
@@ -699,6 +718,8 @@ document.addEventListener('change', e => {
   if (!action) return;
   if (action === 'update-room') {
     updateRoom(el.dataset.room, el.dataset.field, el.type === 'checkbox' ? el.checked : el.value);
+  } else if (action === 'update-project') {
+    updateProject(el.dataset.field, el.value);
   }
 });
 
