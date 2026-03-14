@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HQE VISU2.1.5 Access to Views scoring calculator – Référentiels HQE-B v1.1 / HQE-BD v4.1">
+  <title>HQE VISU2.1.5 – Access to Views</title>
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --border: #d0d5dd;
+      --text: #1a1d23;
+      --muted: #6b7280;
+      --primary: #007b6e;
+      --primary-light: #e0f2ef;
+      --warn-color: #b45309;
+      --warn-bg: #fef9ec;
+      --error: #c0392b;
+      --radius: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system,'Segoe UI',Arial,sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+    header { background: var(--primary); color: #fff; padding: 16px 24px; }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header p { font-size: 12px; opacity: .85; margin-top: 2px; }
+    main { max-width: 880px; margin: 0 auto; padding: 24px 16px; }
+    footer { text-align: center; color: var(--muted); font-size: 11px; padding: 24px 16px; border-top: 1px solid var(--border); margin-top: 40px; }
+
+    /* Buttons */
+    button { cursor: pointer; border: none; border-radius: var(--radius); padding: 8px 14px; font-size: 13px; font-family: inherit; transition: opacity .15s; }
+    button:hover { opacity: .82; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-danger { background: #fee2e2; color: var(--error); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* Card */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: #fafafa; }
+    .card-body { padding: 16px; }
+    .room-name-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 10px; font-size: 14px; font-weight: 600; font-family: inherit; }
+    .room-name-input:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+    /* Form */
+    .form-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.wide { flex: 1; min-width: 180px; }
+    label.field-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    select, input[type="number"] { border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 10px; font-size: 14px; font-family: inherit; background: #fff; color: var(--text); }
+    select:focus, input[type="number"]:focus { outline: 2px solid var(--primary); border-color: transparent; }
+    select:disabled, input:disabled { background: #f3f4f6; color: var(--muted); cursor: not-allowed; }
+
+    /* Segmented radio */
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .seg input[type="radio"] { display: none; }
+    .seg label { padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--text); background: #fff; border-right: 1px solid var(--border); white-space: nowrap; user-select: none; }
+    .seg label:last-of-type { border-right: none; }
+    .seg input[type="radio"]:checked + label { background: var(--primary); color: #fff; font-weight: 600; }
+    .seg input[type="radio"]:disabled + label { opacity: .5; cursor: not-allowed; }
+
+    /* Section title */
+    .sec-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 10px 0 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+
+    /* Facades */
+    .facade-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; margin-bottom: 8px; }
+    .facade-label { font-size: 13px; font-weight: 600; min-width: 72px; }
+    .facade-dist-wrap { display: flex; align-items: center; gap: 6px; }
+    .facade-dist-wrap input { width: 90px; }
+    .unit { font-size: 12px; color: var(--muted); }
+    .btn-adv { font-size: 11px; padding: 4px 8px; background: #f3f4f6; border: 1px solid var(--border); border-radius: 3px; color: var(--muted); }
+    .btn-adv.on { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+
+    /* Advanced panel */
+    .adv-panel { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 8px; width: 100%; }
+    .adv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+    .adv-field { display: flex; flex-direction: column; gap: 3px; }
+    .adv-field label { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .adv-field input { font-size: 13px; padding: 5px 8px; }
+    .vis-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+    .b-vis { background: #dcfce7; color: #166534; }
+    .b-novis { background: #fee2e2; color: #991b1b; }
+    .b-pending { background: #f3f4f6; color: var(--muted); }
+
+    /* Result box */
+    .result-box { margin-top: 16px; border: 2px solid var(--primary); border-radius: var(--radius); overflow: hidden; }
+    .result-header { background: var(--primary); color: #fff; padding: 7px 14px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .result-body { padding: 14px; display: flex; gap: 16px; align-items: flex-start; }
+    .score-badge { width: 62px; height: 62px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 700; }
+    .score-badge .sv { font-size: 24px; line-height: 1; }
+    .score-badge .sl { font-size: 10px; opacity: .8; }
+    .sc6 { background: #dcfce7; color: #166534; }
+    .sc5 { background: #d1fae5; color: #065f46; }
+    .sc4 { background: #dbeafe; color: #1e40af; }
+    .sc3 { background: var(--warn-bg); color: var(--warn-color); }
+    .sc0 { background: #f3f4f6; color: var(--muted); }
+    .result-details { flex: 1; min-width: 0; }
+    .result-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #f3f4f6; gap: 8px; }
+    .result-row:last-child { border-bottom: none; }
+    .result-row .rk { color: var(--muted); }
+    .result-row .rv { font-weight: 600; text-align: right; }
+    .warn-strip { padding: 8px 14px 12px; background: var(--warn-bg); font-size: 12px; color: var(--warn-color); border-top: 1px solid #fcd34d; }
+    .empty-result { color: var(--muted); font-size: 13px; font-style: italic; margin-top: 12px; padding: 12px; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius); }
+
+    /* Info block */
+    details.info-block { margin: 8px 0; }
+    details.info-block summary { cursor: pointer; font-size: 12px; color: var(--primary); list-style: none; display: flex; align-items: center; gap: 4px; }
+    details.info-block summary::before { content: '▶'; font-size: 9px; }
+    details.info-block[open] summary::before { content: '▼'; }
+    details.info-block .ic { margin-top: 8px; padding: 10px 12px; background: var(--primary-light); border-radius: 4px; font-size: 12px; }
+
+    /* Cross-section diagram */
+    .xsect-wrap { display: flex; justify-content: center; margin: 10px 0 14px; }
+
+    /* Summary */
+    .summary-section { margin-top: 32px; }
+    .summary-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .summary-head h2 { font-size: 16px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+    th { background: #f3f4f6; text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+    td { padding: 9px 12px; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+    tr:last-child td { border-bottom: none; }
+    tr.warn-row td { background: var(--warn-bg); }
+    .schip { display: inline-block; padding: 2px 9px; border-radius: 10px; font-weight: 700; font-size: 12px; }
+    .no-rooms { text-align: center; color: var(--muted); padding: 20px; font-style: italic; }
+
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+    @media (max-width: 600px) {
+      .form-row { flex-direction: column; }
+      .adv-grid { grid-template-columns: 1fr 1fr; }
+      .result-body { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>HQE VISU2.1.5 – Access to Views</h1>
+  <p>Visual Comfort indicator · Référentiels HQE-B v1.1 / HQE-BD v4.1 · CERTIVEA April 2025</p>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button class="btn-primary" id="btn-add-room">+ Add Room</button>
+    <button class="btn-secondary btn-sm" id="btn-clear-all">Clear all</button>
+  </div>
+  <div id="rooms-container"></div>
+  <div id="summary-container"></div>
+</main>
+
+<footer>
+  v1.0 – March 2026 · CERTIVEA HQE-B v1.1 / HQE-BD v4.1 · For informational use only. Always verify with the official certification guide.
+</footer>
+
+<script>
+// ─── CONSTANTS ─────────────────────────────────────────────────────────────────
+
+const URBAN_CONTEXTS = {
+  alley:       'Alley / Small inner courtyard',
+  dense_urban: 'Dense urban',
+  urban:       'Urban',
+  peri_rural:  'Peri-urban / Rural',
+};
+
+// Component levels and their equivalent points for comparison
+const COMP_POINTS = { all_three: 6, two_of_three: 5, landscape: 4, sky_or_ground: 3, none: 0 };
+
+// ─── STATE ─────────────────────────────────────────────────────────────────────
+
+let state = { rooms: [] };
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+
+function newFacade(index) {
+  return {
+    id: uid(),
+    label: 'Facade ' + index,
+    distance: '',
+    advOn: false,
+    adv: { D: '', d: '', h1: '', h2: '', H1: '', H2: '' },
+  };
+}
+
+function addRoom() {
+  state.rooms.push({
+    id: uid(),
+    name: 'Room ' + (state.rooms.length + 1),
+    urbanContext: 'urban',
+    floorType: 'intermediate',
+    glazedFacades: 1,
+    windowless: false,
+    facades: [newFacade(1)],
+  });
+  render();
+}
+
+function deleteRoom(id) {
+  state.rooms = state.rooms.filter(r => r.id !== id);
+  render();
+}
+
+function updateRoom(roomId, field, value) {
+  const room = state.rooms.find(r => r.id === roomId);
+  if (!room) return;
+
+  if (field === 'glazedFacades') {
+    const n = parseInt(value);
+    room.glazedFacades = n;
+    while (room.facades.length < n) room.facades.push(newFacade(room.facades.length + 1));
+    while (room.facades.length > n) room.facades.pop();
+  } else if (field === 'windowless') {
+    room.windowless = value;
+  } else {
+    room[field] = value;
+  }
+  render();
+}
+
+function updateFacade(roomId, facadeId, field, value) {
+  const room = state.rooms.find(r => r.id === roomId);
+  const facade = room && room.facades.find(f => f.id === facadeId);
+  if (!facade) return;
+  facade[field] = value;
+  render();
+}
+
+function updateAdv(roomId, facadeId, field, value) {
+  const room = state.rooms.find(r => r.id === roomId);
+  const facade = room && room.facades.find(f => f.id === facadeId);
+  if (!facade) return;
+  facade.adv[field] = value;
+  render();
+}
+
+function toggleAdv(roomId, facadeId) {
+  const room = state.rooms.find(r => r.id === roomId);
+  const facade = room && room.facades.find(f => f.id === facadeId);
+  if (!facade) return;
+  facade.advOn = !facade.advOn;
+  render();
+}
+
+// ─── SCORING ENGINE ────────────────────────────────────────────────────────────
+
+const Scoring = {
+
+  distanceBand(d) {
+    const v = parseFloat(d);
+    if (isNaN(v) || d === '') return null;
+    if (v < 0) return null;
+    if (v === 0) return { label: 'Windowless (0 m)', points: 0 };
+    if (v <= 6)  return { label: ']0 – 6 m]',    points: 3 };
+    if (v <= 20) return { label: ']6 – 20 m]',   points: 4 };
+    if (v <= 50) return { label: ']20 – 50 m]',  points: 5 };
+    return           { label: '> 50 m',           points: 6 };
+  },
+
+  expectedComponents(urbanContext, floorType) {
+    if (urbanContext === 'peri_rural')
+      return { label: 'All three (sky, landscape, ground)', points: 6 };
+    if (floorType === 'ground_top')
+      return { label: 'Two of three',  points: 5 };
+    return     { label: 'Landscape only', points: 4 };
+  },
+
+  skyVisible(D, d, h1, H1) {
+    const [vD, vd, vh1, vH1] = [D, d, h1, H1].map(parseFloat);
+    if ([vD, vd, vh1, vH1].some(isNaN) || vd === 0 || vh1 <= 0) return null;
+    return vH1 < vh1 * (vD + vd) / vd;
+  },
+
+  groundVisible(D, d, h2, H2) {
+    const [vD, vd, vh2, vH2] = [D, d, h2, H2].map(parseFloat);
+    if ([vD, vd, vh2, vH2].some(isNaN) || vd === 0 || vh2 <= 0) return null;
+    return vH2 < vh2 * (vD + vd) / vd;
+  },
+
+  computeRoom(room) {
+    if (room.windowless) {
+      return { pts: 0, distBand: { label: 'Windowless', points: 0 }, compInfo: { label: 'None', points: 0 }, worstFacade: null, mismatch: false };
+    }
+    const active = room.facades.filter(f => f.distance !== '' && f.distance !== null);
+    if (active.length === 0) return null;
+
+    const worst = active.reduce((w, f) =>
+      parseFloat(f.distance) < parseFloat(w.distance) ? f : w
+    );
+
+    const distBand = this.distanceBand(worst.distance);
+    if (!distBand) return null;
+
+    const compInfo = this.expectedComponents(room.urbanContext, room.floorType);
+
+    let skyVis = null, groundVis = null;
+    if (worst.advOn) {
+      const a = worst.adv;
+      skyVis = this.skyVisible(a.D, a.d, a.h1, a.H1);
+      groundVis = this.groundVisible(a.D, a.d, a.h2, a.H2);
+    }
+
+    // Score = min(distance points, component points)
+    const pts = Math.min(distBand.points, compInfo.points);
+    const mismatch = distBand.points !== compInfo.points;
+
+    return { pts, distBand, compInfo, worstFacade: worst, skyVis, groundVis, mismatch };
+  }
+};
+
+// ─── RENDER ────────────────────────────────────────────────────────────────────
+
+function render() {
+  // Save focus before full re-render
+  const ae = document.activeElement;
+  let focusSel = null, selStart = null, selEnd = null;
+  if (ae && ae.dataset && ae.dataset.room) {
+    const d = ae.dataset;
+    focusSel = `[data-room="${d.room}"]${d.facade ? `[data-facade="${d.facade}"]` : ''}[data-field="${d.field}"]`;
+    selStart = ae.selectionStart;
+    selEnd = ae.selectionEnd;
+  }
+
+  renderRooms();
+  renderSummary();
+
+  if (focusSel) {
+    const el = document.querySelector(focusSel);
+    if (el) {
+      el.focus();
+      if (selStart !== null) try { el.setSelectionRange(selStart, selEnd); } catch(e) {}
+    }
+  }
+}
+
+function renderRooms() {
+  const c = document.getElementById('rooms-container');
+  if (state.rooms.length === 0) {
+    c.innerHTML = '<div class="empty-result" style="padding:40px;">No rooms yet. Click <strong>+ Add Room</strong> to begin.</div>';
+    return;
+  }
+  c.innerHTML = state.rooms.map(roomHTML).join('');
+}
+
+function roomHTML(room) {
+  const result = Scoring.computeRoom(room);
+  const isPeriRural = room.urbanContext === 'peri_rural';
+
+  const urbanOptions = Object.entries(URBAN_CONTEXTS)
+    .map(([k, v]) => `<option value="${k}"${room.urbanContext === k ? ' selected' : ''}>${v}</option>`)
+    .join('');
+
+  const floorSegment = `
+    <div class="seg">
+      <input type="radio" id="ft-gt-${room.id}" name="ft-${room.id}" value="ground_top"
+        ${room.floorType === 'ground_top' ? 'checked' : ''}
+        ${isPeriRural ? 'disabled' : ''}
+        data-action="update-room" data-room="${room.id}" data-field="floorType">
+      <label for="ft-gt-${room.id}">Ground / Top</label>
+      <input type="radio" id="ft-in-${room.id}" name="ft-${room.id}" value="intermediate"
+        ${room.floorType === 'intermediate' ? 'checked' : ''}
+        ${isPeriRural ? 'disabled' : ''}
+        data-action="update-room" data-room="${room.id}" data-field="floorType">
+      <label for="ft-in-${room.id}">Intermediate</label>
+    </div>`;
+
+  const facadesSegment = `
+    <div class="seg">
+      ${[1,2,3,4].map(n => `
+        <input type="radio" id="gf-${n}-${room.id}" name="gf-${room.id}" value="${n}"
+          ${room.glazedFacades === n ? 'checked' : ''}
+          data-action="update-room" data-room="${room.id}" data-field="glazedFacades">
+        <label for="gf-${n}-${room.id}">${n}</label>
+      `).join('')}
+    </div>`;
+
+  const observerPos = { 1: '¾ depth · centre of facade', 2: '¾ depth₁ · ¾ depth₂', 3: '¾ depth₁ · ½ depth₂', 4: '½ depth₁ · ½ depth₂' };
+
+  const facadesHTML = room.facades.map(f => facadeHTML(room.id, f)).join('');
+
+  return `
+  <div class="card">
+    <div class="card-header">
+      <input class="room-name-input" type="text" value="${esc(room.name)}" placeholder="Room name"
+        data-action="update-room" data-room="${room.id}" data-field="name">
+      <button class="btn-danger btn-sm" data-action="delete-room" data-room="${room.id}">✕ Remove</button>
+    </div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group wide">
+          <label class="field-label">Urban Context</label>
+          <select data-action="update-room" data-room="${room.id}" data-field="urbanContext">${urbanOptions}</select>
+        </div>
+        <div class="form-group">
+          <label class="field-label">${isPeriRural ? 'Floor level (all equal in this context)' : 'Floor Level'}</label>
+          ${floorSegment}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="field-label">Glazed Facades</label>
+          ${facadesSegment}
+          <span style="font-size:11px;color:var(--muted);margin-top:3px;">Observer: ${observerPos[room.glazedFacades]}, eye at 1.30 m</span>
+        </div>
+        <div class="form-group" style="justify-content:flex-end;padding-bottom:2px;">
+          <label class="field-label">Windowless room</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:400;padding-top:4px;">
+            <input type="checkbox" ${room.windowless ? 'checked' : ''}
+              data-action="update-room" data-room="${room.id}" data-field="windowless"
+              style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary);">
+            No exterior openings (0 pts)
+          </label>
+        </div>
+      </div>
+
+      ${!room.windowless ? `
+        <div class="sec-title">Facade Distances to Obstacle</div>
+        ${facadesHTML}
+        <details class="info-block" style="margin-top:8px;">
+          <summary>How to measure the view distance</summary>
+          <div class="ic">
+            The view distance is the distance from the glazed facade to the <strong>first visible obstacle</strong> (building, wall, etc.).
+            Vegetation is <strong>not</strong> considered an obstacle. If obstacles are at different distances, take the <strong>most unfavourable</strong> (shortest) distance.
+          </div>
+        </details>
+      ` : ''}
+
+      ${resultHTML(room, result)}
+    </div>
+  </div>`;
+}
+
+function facadeHTML(roomId, f) {
+  const a = f.adv;
+  const skyVis = f.advOn ? Scoring.skyVisible(a.D, a.d, a.h1, a.H1) : null;
+  const groundVis = f.advOn ? Scoring.groundVisible(a.D, a.d, a.h2, a.H2) : null;
+
+  const advFields = [
+    ['D',  'D – Facade → obstacle (m)', a.D],
+    ['d',  'd – Window recess depth (m)', a.d],
+    ['h1', 'h1 – Eye → lintel (m)', a.h1],
+    ['h2', 'h2 – Eye → sill (m)', a.h2],
+    ['H1', 'H1 – Eye → top of obstacle (m)', a.H1],
+    ['H2', 'H2 – Eye → base of obstacle (m)', a.H2],
+  ];
+
+  return `
+  <div style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:8px;">
+    <div class="facade-row" style="border:none;padding:0;margin:0;">
+      <span class="facade-label">${esc(f.label)}</span>
+      <div class="facade-dist-wrap">
+        <input type="number" min="0" step="0.5" value="${f.distance}" placeholder="—"
+          data-action="update-facade" data-room="${roomId}" data-facade="${f.id}" data-field="distance">
+        <span class="unit">m to obstacle</span>
+      </div>
+      <button class="btn-adv ${f.advOn ? 'on' : ''}"
+        data-action="toggle-adv" data-room="${roomId}" data-facade="${f.id}">
+        ${f.advOn ? '▲ Hide cross-section' : '▼ Cross-section geometry'}
+      </button>
+    </div>
+
+    ${f.advOn ? `
+    <div class="adv-panel">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">CROSS-SECTION GEOMETRY (optional — verifies sky & ground visibility)</div>
+      ${crossSectionSVG()}
+      <div class="adv-grid">
+        ${advFields.map(([field, lbl, val]) => `
+          <div class="adv-field">
+            <label>${lbl}</label>
+            <input type="number" step="0.01" value="${val}"
+              data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="${field}">
+          </div>`).join('')}
+      </div>
+      <div class="vis-badges">
+        <span class="badge ${skyVis === null ? 'b-pending' : skyVis ? 'b-vis' : 'b-novis'}">
+          ${skyVis === null ? '? Sky' : skyVis ? '✓ Sky visible' : '✗ Sky NOT visible'}
+        </span>
+        <span class="badge ${groundVis === null ? 'b-pending' : groundVis ? 'b-vis' : 'b-novis'}">
+          ${groundVis === null ? '? Ground' : groundVis ? '✓ Ground visible' : '✗ Ground NOT visible'}
+        </span>
+        <span style="font-size:11px;color:var(--muted);">Landscape: assumed visible if obstacles are seen</span>
+      </div>
+    </div>` : ''}
+  </div>`;
+}
+
+function resultHTML(room, result) {
+  if (room.windowless) {
+    return `<div class="result-box">
+      <div class="result-header">Result – Access to Views</div>
+      <div class="result-body">
+        <div class="score-badge sc0"><span class="sv">0</span><span class="sl">pts</span></div>
+        <div class="result-details">
+          <div class="result-row"><span class="rk">Condition</span><span class="rv">Windowless room</span></div>
+          <div class="result-row"><span class="rk">View components</span><span class="rv">None</span></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (!result) {
+    return `<div class="empty-result">Enter at least one facade distance to compute the score.</div>`;
+  }
+
+  const { pts, distBand, compInfo, worstFacade, skyVis, groundVis, mismatch } = result;
+  const scClass = pts === 6 ? 'sc6' : pts === 5 ? 'sc5' : pts === 4 ? 'sc4' : 'sc3';
+
+  return `<div class="result-box">
+    <div class="result-header">Result – Access to Views</div>
+    <div class="result-body">
+      <div class="score-badge ${scClass}">
+        <span class="sv">${pts}</span><span class="sl">pts</span>
+      </div>
+      <div class="result-details">
+        <div class="result-row">
+          <span class="rk">Worst-case facade</span>
+          <span class="rv">${esc(worstFacade.label)} — ${worstFacade.distance} m</span>
+        </div>
+        <div class="result-row">
+          <span class="rk">Distance band</span>
+          <span class="rv">${distBand.label} → ${distBand.points} pts</span>
+        </div>
+        <div class="result-row">
+          <span class="rk">Expected components</span>
+          <span class="rv">${compInfo.label} → ${compInfo.points} pts</span>
+        </div>
+        <div class="result-row">
+          <span class="rk">Score (min of both)</span>
+          <span class="rv" style="font-size:14px;">${pts} pts</span>
+        </div>
+        ${skyVis !== null ? `<div class="result-row">
+          <span class="rk">Sky visibility (geometry)</span>
+          <span class="rv" style="color:${skyVis ? '#166534' : '#991b1b'}">${skyVis ? '✓ Visible' : '✗ Not visible'}</span>
+        </div>` : ''}
+        ${groundVis !== null ? `<div class="result-row">
+          <span class="rk">Ground visibility (geometry)</span>
+          <span class="rv" style="color:${groundVis ? '#166534' : '#991b1b'}">${groundVis ? '✓ Visible' : '✗ Not visible'}</span>
+        </div>` : ''}
+      </div>
+    </div>
+    ${mismatch ? `<div class="warn-strip">
+      ⚠ Distance band (${distBand.points} pts) and urban context components (${compInfo.points} pts) do not match.
+      Score is capped at the lower value (${pts} pts).
+    </div>` : ''}
+  </div>`;
+}
+
+function renderSummary() {
+  const c = document.getElementById('summary-container');
+  if (state.rooms.length === 0) { c.innerHTML = ''; return; }
+
+  const hasMismatch = state.rooms.some(r => { const res = Scoring.computeRoom(r); return res && res.mismatch; });
+
+  const rows = state.rooms.map(room => {
+    const result = Scoring.computeRoom(room);
+    const pts = result ? result.pts : (room.windowless ? 0 : null);
+    const [bg, fg] = scoreColors(pts);
+    return `<tr${result && result.mismatch ? ' class="warn-row"' : ''}>
+      <td><strong>${esc(room.name)}</strong></td>
+      <td>${URBAN_CONTEXTS[room.urbanContext]}</td>
+      <td>${room.windowless ? '—' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate')}</td>
+      <td>${result ? result.worstFacade.distance + ' m' : room.windowless ? '0 m' : '—'}</td>
+      <td>${result ? result.distBand.label : room.windowless ? 'Windowless' : '—'}</td>
+      <td>${result ? result.compInfo.label : room.windowless ? 'None' : '—'}</td>
+      <td><span class="schip" style="background:${bg};color:${fg}">${pts !== null ? pts + ' pts' : '—'}</span></td>
+    </tr>`;
+  }).join('');
+
+  c.innerHTML = `
+  <div class="summary-section">
+    <div class="summary-head">
+      <h2>Summary</h2>
+      <button class="btn-secondary btn-sm" id="btn-csv">Copy as CSV</button>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Room</th><th>Urban Context</th><th>Floor</th>
+        <th>Min Distance</th><th>Distance Band</th><th>Components</th><th>Score</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    ${hasMismatch ? '<div class="warn-strip" style="border-radius:0 0 6px 6px;border:1px solid #fcd34d;border-top:none;margin-top:-1px;">⚠ Amber rows: distance band and urban context component level do not match. Score is capped at the lower value.</div>' : ''}
+  </div>
+  <details class="info-block" style="margin-top:16px;">
+    <summary>Scoring reference table (HQE VISU2.1.5)</summary>
+    <div class="ic">
+      <table style="font-size:12px;margin-top:4px;">
+        <thead><tr><th>Distance to obstacle</th><th>Expected components</th><th>Points</th></tr></thead>
+        <tbody>
+          <tr><td>> 50 m</td><td>All three (sky, landscape, ground)</td><td><strong>6</strong></td></tr>
+          <tr><td>]20 – 50 m]</td><td>Two of three</td><td><strong>5</strong></td></tr>
+          <tr><td>]6 – 20 m]</td><td>Landscape</td><td><strong>4</strong></td></tr>
+          <tr><td>]0 – 6 m]</td><td>Sky only or ground only</td><td><strong>3</strong></td></tr>
+          <tr><td>0 m (windowless)</td><td>None</td><td><strong>0</strong></td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:8px;color:var(--muted);">Score = min(distance band points, expected component points). Final HQE notation (0–20 pts) depends on room type and is assigned by the evaluator.</p>
+    </div>
+  </details>`;
+
+  document.getElementById('btn-csv').addEventListener('click', copyCSV);
+}
+
+function scoreColors(pts) {
+  if (pts === 6) return ['#dcfce7', '#166534'];
+  if (pts === 5) return ['#d1fae5', '#065f46'];
+  if (pts === 4) return ['#dbeafe', '#1e40af'];
+  if (typeof pts === 'number') return ['#fef9ec', '#b45309'];
+  return ['#f3f4f6', '#6b7280'];
+}
+
+// ─── CROSS-SECTION SVG ──────────────────────────────────────────────────────────
+
+function crossSectionSVG() {
+  return `<div class="xsect-wrap">
+    <svg width="320" height="170" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"
+      style="font-family:monospace;font-size:11px;overflow:visible;">
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#555"/>
+        </marker>
+      </defs>
+      <!-- Ground line -->
+      <line x1="0" y1="148" x2="320" y2="148" stroke="#bbb" stroke-width="1"/>
+      <!-- Room wall (with window reveal) -->
+      <rect x="8"  y="20" width="18" height="128" fill="#c8cdd4"/>
+      <!-- Window opening -->
+      <rect x="8"  y="58" width="18" height="55" fill="#bde3ff" stroke="#007b6e" stroke-width="1.5"/>
+      <!-- Obstacle building -->
+      <rect x="220" y="48" width="34" height="100" fill="#c8cdd4" stroke="#6b7280" stroke-width="1"/>
+      <!-- Eye point -->
+      <circle cx="70" cy="98" r="4" fill="#007b6e"/>
+      <!-- Label: d (window depth) -->
+      <text x="9" y="52" fill="#007b6e" font-size="10">d</text>
+      <!-- Arrow: h1 (eye to lintel, upward) -->
+      <line x1="55" y1="98" x2="55" y2="58" stroke="#c0392b" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="38" y="80" fill="#c0392b">h1</text>
+      <!-- Arrow: h2 (eye to sill, downward) -->
+      <line x1="55" y1="98" x2="55" y2="113" stroke="#c0392b" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="38" y="112" fill="#c0392b">h2</text>
+      <!-- Dashed: H1 (eye to top of obstacle) -->
+      <line x1="70" y1="98" x2="220" y2="48" stroke="#1d6fa4" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="193" y="44" fill="#1d6fa4">H1</text>
+      <!-- Dashed: H2 (eye to base of obstacle) -->
+      <line x1="70" y1="98" x2="220" y2="148" stroke="#1d6fa4" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="193" y="162" fill="#1d6fa4">H2</text>
+      <!-- D arrow (distance facade to obstacle) -->
+      <line x1="26" y1="155" x2="220" y2="155" stroke="#333" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="110" y="168" fill="#333" text-anchor="middle">D</text>
+      <!-- Labels -->
+      <text x="10" y="17" fill="#555" font-size="10">Wall</text>
+      <text x="218" y="44" fill="#555" font-size="10" text-anchor="end">Obstacle</text>
+    </svg>
+  </div>`;
+}
+
+// ─── CSV EXPORT ─────────────────────────────────────────────────────────────────
+
+function copyCSV() {
+  const headers = ['Room','Urban Context','Floor','Min Distance (m)','Distance Band','Components','Score (pts)'];
+  const rows = state.rooms.map(room => {
+    const result = Scoring.computeRoom(room);
+    const pts = result ? result.pts : (room.windowless ? 0 : '');
+    return [
+      room.name, URBAN_CONTEXTS[room.urbanContext],
+      room.windowless ? '' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate'),
+      result ? result.worstFacade.distance : room.windowless ? '0' : '',
+      result ? result.distBand.label : room.windowless ? 'Windowless' : '',
+      result ? result.compInfo.label : room.windowless ? 'None' : '',
+      pts,
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  navigator.clipboard.writeText(csv)
+    .then(() => alert('Copied to clipboard!'))
+    .catch(() => alert('Copy failed — please copy manually.'));
+}
+
+// ─── EVENT DELEGATION ───────────────────────────────────────────────────────────
+
+document.addEventListener('input', e => {
+  const el = e.target;
+  const action = el.dataset && el.dataset.action;
+  if (!action) return;
+  if (action === 'update-room') {
+    updateRoom(el.dataset.room, el.dataset.field, el.type === 'checkbox' ? el.checked : el.value);
+  } else if (action === 'update-facade') {
+    updateFacade(el.dataset.room, el.dataset.facade, el.dataset.field, el.value);
+  } else if (action === 'update-adv') {
+    updateAdv(el.dataset.room, el.dataset.facade, el.dataset.field, el.value);
+  }
+});
+
+document.addEventListener('change', e => {
+  const el = e.target;
+  const action = el.dataset && el.dataset.action;
+  if (!action) return;
+  if (action === 'update-room') {
+    updateRoom(el.dataset.room, el.dataset.field, el.type === 'checkbox' ? el.checked : el.value);
+  }
+});
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const { action, room, facade } = el.dataset;
+  if (action === 'delete-room') deleteRoom(room);
+  else if (action === 'toggle-adv') toggleAdv(room, facade);
+});
+
+document.getElementById('btn-add-room').addEventListener('click', addRoom);
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  if (state.rooms.length > 0 && confirm('Clear all rooms?')) { state.rooms = []; render(); }
+});
+
+// ─── UTILS ──────────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────────────
+addRoom();
+</script>
+</body>
+</html>
