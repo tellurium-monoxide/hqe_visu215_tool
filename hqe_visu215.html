@@ -195,7 +195,7 @@ function newFacade(index) {
     label: 'Facade ' + index,
     distance: '',
     advOn: false,
-    adv: { D: '', h1: '', h2: '', H1: '', H2: '' },
+    adv: { D: '', h1: '', h2: '', floorH: '', obstacleTopH: '' },
   };
 }
 
@@ -300,6 +300,29 @@ function computeD(room, facadeIndex) {
   return Math.round(ratio * depth * 100) / 100;
 }
 
+// ─── H1 / H2 COMPUTATION ──────────────────────────────────────────────────────
+// eye_height = floor_height + 1.30 m (HQE standard observer eye level)
+// H1 = obstacle_top  − eye_height  (positive = obstacle top is above eye)
+// H2 = eye_height    − obstacle_base (positive = obstacle base is below eye)
+
+function eyeHeight(adv) {
+  const v = parseFloat(adv.floorH);
+  return isNaN(v) ? null : Math.round((v + 1.30) * 100) / 100;
+}
+
+function computeH1(adv) {
+  const eye = eyeHeight(adv);
+  const top = parseFloat(adv.obstacleTopH);
+  if (eye === null || isNaN(top)) return null;
+  return Math.round((top - eye) * 100) / 100;
+}
+
+function computeH2(adv) {
+  const eye = eyeHeight(adv);
+  if (eye === null) return null;
+  return Math.round(eye * 100) / 100; // obstacle base = 0 (ground level)
+}
+
 // ─── SCORING ENGINE ────────────────────────────────────────────────────────────
 
 const Scoring = {
@@ -357,8 +380,10 @@ const Scoring = {
     if (worst.advOn) {
       const a = worst.adv;
       const effectiveD = autoD !== null ? String(autoD) : '';
-      skyVis = this.skyVisible(a.D, effectiveD, a.h1, a.H1);
-      groundVis = this.groundVisible(a.D, effectiveD, a.h2, a.H2);
+      const H1 = computeH1(a);
+      const H2 = computeH2(a);
+      skyVis    = H1 !== null ? this.skyVisible(a.D, effectiveD, a.h1, String(H1))    : null;
+      groundVis = H2 !== null ? this.groundVisible(a.D, effectiveD, a.h2, String(H2)) : null;
     }
 
     // Score = min(distance points, component points)
@@ -402,13 +427,27 @@ function renderResultsOnly() {
     const resultEl = document.getElementById('result-' + room.id);
     if (resultEl) resultEl.innerHTML = resultHTML(room, Scoring.computeRoom(room));
 
-    // Update d displays in open advanced panels
+    // Update computed displays in open advanced panels
     room.facades.forEach((f, i) => {
-      const dEl = document.getElementById('d-disp-' + room.id + '-' + f.id);
-      if (!dEl) return;
-      const autoD = computeD(room, i);
-      dEl.style.color = autoD !== null ? 'var(--primary)' : 'var(--muted)';
-      dEl.textContent = autoD !== null ? autoD + ' m' : '— enter room depth p above';
+      const dEl  = document.getElementById('d-disp-'  + room.id + '-' + f.id);
+      const h1El = document.getElementById('H1-disp-' + room.id + '-' + f.id);
+      const h2El = document.getElementById('H2-disp-' + room.id + '-' + f.id);
+
+      if (dEl) {
+        const autoD = computeD(room, i);
+        dEl.style.color = autoD !== null ? 'var(--primary)' : 'var(--muted)';
+        dEl.textContent = autoD !== null ? autoD + ' m' : '— enter room depth p above';
+      }
+      if (h1El) {
+        const H1 = computeH1(f.adv);
+        h1El.style.color = H1 !== null ? 'var(--primary)' : 'var(--muted)';
+        h1El.textContent = H1 !== null ? H1 + ' m' : '— enter floor & obstacle heights';
+      }
+      if (h2El) {
+        const H2 = computeH2(f.adv);
+        h2El.style.color = H2 !== null ? 'var(--primary)' : 'var(--muted)';
+        h2El.textContent = H2 !== null ? H2 + ' m' : '— enter floor height';
+      }
     });
   });
   renderSummary();
@@ -536,13 +575,9 @@ function facadeHTML(room, f, facadeIndex) {
   const skyVis = f.advOn ? Scoring.skyVisible(a.D, effectiveD, a.h1, a.H1) : null;
   const groundVis = f.advOn ? Scoring.groundVisible(a.D, effectiveD, a.h2, a.H2) : null;
 
-  const advFields = [
-    ['D',  'D – Facade → obstacle (m)', a.D],
-    ['h1', 'h1 – Eye → lintel (m)', a.h1],
-    ['h2', 'h2 – Eye → sill (m)', a.h2],
-    ['H1', 'H1 – Eye → top of obstacle (m)', a.H1],
-    ['H2', 'H2 – Eye → base of obstacle (m)', a.H2],
-  ];
+  const H1 = computeH1(a);
+  const H2 = computeH2(a);
+  const eye = eyeHeight(a);
 
   return `
   <div style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:8px;">
@@ -563,19 +598,59 @@ function facadeHTML(room, f, facadeIndex) {
     <div class="adv-panel">
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">CROSS-SECTION GEOMETRY (optional — verifies sky & ground visibility)</div>
       ${crossSectionSVG()}
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+        Inputs below are used to verify sky and ground visibility through the cross-section formulas.
+      </div>
       <div class="adv-grid">
         <div class="adv-field">
-          <label>d – Observer distance from window (m)</label>
-          <div id="d-disp-${room.id}-${f.id}" style="padding:5px 8px;background:#f3f4f6;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:monospace;color:${autoD !== null ? 'var(--primary)' : 'var(--muted)'};">
+          <label>D – Facade → obstacle (m)</label>
+          <input type="number" step="0.01" value="${a.D}"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="D">
+        </div>
+        <div class="adv-field">
+          <label>h1 – Eye → lintel (m)</label>
+          <input type="number" step="0.01" value="${a.h1}"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="h1">
+        </div>
+        <div class="adv-field">
+          <label>h2 – Eye → sill (m)</label>
+          <input type="number" step="0.01" value="${a.h2}"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="h2">
+        </div>
+        <div class="adv-field">
+          <label>Observer floor height (m)</label>
+          <input type="number" step="0.01" value="${a.floorH}" placeholder="e.g. 0 or 3.5"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="floorH">
+        </div>
+        <div class="adv-field">
+          <label>Obstacle top height (m)</label>
+          <input type="number" step="0.01" value="${a.obstacleTopH}" placeholder="e.g. 12"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="obstacleTopH">
+        </div>
+      </div>
+      <div class="adv-grid" style="margin-bottom:10px;">
+        <div class="adv-field">
+          <label>d – Observer dist. from window (m)</label>
+          <div id="d-disp-${room.id}-${f.id}" style="${dispStyle(autoD !== null)}">
             ${autoD !== null ? autoD + ' m' : '— enter room depth p above'}
           </div>
         </div>
-        ${advFields.map(([field, lbl, val]) => `
-          <div class="adv-field">
-            <label>${lbl}</label>
-            <input type="number" step="0.01" value="${val}"
-              data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="${field}">
-          </div>`).join('')}
+        <div class="adv-field">
+          <label>Eye height = floor + 1.30 m</label>
+          <div style="${dispStyle(eye !== null)}">${eye !== null ? eye + ' m' : '— enter floor height'}</div>
+        </div>
+        <div class="adv-field">
+          <label>H1 = obstacle top − eye (m)</label>
+          <div id="H1-disp-${room.id}-${f.id}" style="${dispStyle(H1 !== null)}">
+            ${H1 !== null ? H1 + ' m' : '— enter floor & obstacle heights'}
+          </div>
+        </div>
+        <div class="adv-field">
+          <label>H2 = eye height (obstacle base = 0)</label>
+          <div id="H2-disp-${room.id}-${f.id}" style="${dispStyle(H2 !== null)}">
+            ${H2 !== null ? H2 + ' m' : '— enter floor height (base = 0)'}
+          </div>
+        </div>
       </div>
       <div class="vis-badges">
         <span class="badge ${skyVis === null ? 'b-pending' : skyVis ? 'b-vis' : 'b-novis'}">
@@ -825,6 +900,11 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
 });
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────────
+
+function dispStyle(hasValue) {
+  const color = hasValue ? 'var(--primary)' : 'var(--muted)';
+  return `padding:5px 8px;background:#f3f4f6;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:monospace;color:${color};`;
+}
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
