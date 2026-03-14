@@ -195,7 +195,7 @@ function newFacade(index) {
     label: 'Facade ' + index,
     distance: '',
     advOn: false,
-    adv: { D: '', d: '', h1: '', h2: '', H1: '', H2: '' },
+    adv: { D: '', h1: '', h2: '', H1: '', H2: '' },
   };
 }
 
@@ -206,6 +206,8 @@ function addRoom() {
     floorType: 'intermediate',
     glazedFacades: 1,
     windowless: false,
+    roomP1: '',  // depth perpendicular to facades 1 & 3 (m)
+    roomP2: '',  // depth perpendicular to facades 2 & 4 (m)
     facades: [newFacade(1)],
   });
   render();
@@ -262,6 +264,43 @@ function toggleAdv(roomId, facadeId) {
   render();
 }
 
+// ─── OBSERVER DEPTH (d) COMPUTATION ───────────────────────────────────────────
+//
+// Per HQE VISU2.1.5, the observer is placed at a fraction of the room depth
+// perpendicular to each facade. d is the distance from the window plane to the
+// observer's eye, derived from room dimensions:
+//
+//   Facades 0 & 2  →  axis p  (room depth p1)
+//   Facades 1 & 3  →  axis p' (room depth p2)
+//
+//   n=1 : d = ¾ × p1
+//   n=2 : d = ¾ × p  (each facade uses its own perpendicular depth)
+//   n=3 : facade 1 (single) → d = ¾ × p2 ; facades 0 & 2 (pair) → d = ½ × p1
+//   n=4 : d = ½ × p  (each facade uses its own perpendicular depth)
+
+function computeD(room, facadeIndex) {
+  const p1 = parseFloat(room.roomP1);
+  const p2 = parseFloat(room.roomP2);
+  const n = room.glazedFacades;
+  const isP1axis = facadeIndex % 2 === 0; // facades 0, 2 → p1; facades 1, 3 → p2
+
+  let depth, ratio;
+  if (n === 1) {
+    depth = p1; ratio = 3/4;
+  } else if (n === 2) {
+    depth = isP1axis ? p1 : p2; ratio = 3/4;
+  } else if (n === 3) {
+    // facade 1 is the "single"; facades 0 & 2 are the opposite pair
+    if (facadeIndex === 1) { depth = p2; ratio = 3/4; }
+    else                   { depth = p1; ratio = 1/2; }
+  } else { // n === 4
+    depth = isP1axis ? p1 : p2; ratio = 1/2;
+  }
+
+  if (isNaN(depth) || depth <= 0) return null;
+  return Math.round(ratio * depth * 100) / 100;
+}
+
 // ─── SCORING ENGINE ────────────────────────────────────────────────────────────
 
 const Scoring = {
@@ -307,17 +346,20 @@ const Scoring = {
     const worst = active.reduce((w, f) =>
       parseFloat(f.distance) < parseFloat(w.distance) ? f : w
     );
+    const worstIndex = room.facades.indexOf(worst);
 
     const distBand = this.distanceBand(worst.distance);
     if (!distBand) return null;
 
     const compInfo = this.expectedComponents(state.urbanContext, room.floorType);
 
+    const autoD = computeD(room, worstIndex);
     let skyVis = null, groundVis = null;
     if (worst.advOn) {
       const a = worst.adv;
-      skyVis = this.skyVisible(a.D, a.d, a.h1, a.H1);
-      groundVis = this.groundVisible(a.D, a.d, a.h2, a.H2);
+      const effectiveD = autoD !== null ? String(autoD) : '';
+      skyVis = this.skyVisible(a.D, effectiveD, a.h1, a.H1);
+      groundVis = this.groundVisible(a.D, effectiveD, a.h2, a.H2);
     }
 
     // Score = min(distance points, component points)
@@ -399,9 +441,9 @@ function roomHTML(room) {
       `).join('')}
     </div>`;
 
-  const observerPos = { 1: '¾ depth · centre of facade', 2: '¾ depth₁ · ¾ depth₂', 3: '¾ depth₁ · ½ depth₂', 4: '½ depth₁ · ½ depth₂' };
+  const observerPos = { 1: '¾ p · centre of facade', 2: '¾ p · ¾ p\'', 3: '¾ p\' (single) · ½ p (pair)', 4: '½ p · ½ p\'' };
 
-  const facadesHTML = room.facades.map(f => facadeHTML(room.id, f)).join('');
+  const facadesHTML = room.facades.map((f, i) => facadeHTML(room, f, i)).join('');
 
   return `
   <div class="card">
@@ -416,6 +458,22 @@ function roomHTML(room) {
           <label class="field-label">${isPeriRural ? 'Floor level (all equal in peri-urban/rural)' : 'Floor Level'}</label>
           ${floorSegment}
         </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="field-label">p – Room depth, Facade 1 axis (m)</label>
+          <input type="number" min="0" step="0.1" value="${room.roomP1}" placeholder="e.g. 6"
+            data-action="update-room" data-room="${room.id}" data-field="roomP1"
+            style="width:120px;">
+        </div>
+        ${room.glazedFacades >= 2 ? `
+        <div class="form-group">
+          <label class="field-label">p' – Room depth, Facade 2 axis (m)</label>
+          <input type="number" min="0" step="0.1" value="${room.roomP2}" placeholder="e.g. 4"
+            data-action="update-room" data-room="${room.id}" data-field="roomP2"
+            style="width:120px;">
+        </div>` : ''}
       </div>
 
       <div class="form-row">
@@ -452,14 +510,16 @@ function roomHTML(room) {
   </div>`;
 }
 
-function facadeHTML(roomId, f) {
+function facadeHTML(room, f, facadeIndex) {
+  const roomId = room.id;
   const a = f.adv;
-  const skyVis = f.advOn ? Scoring.skyVisible(a.D, a.d, a.h1, a.H1) : null;
-  const groundVis = f.advOn ? Scoring.groundVisible(a.D, a.d, a.h2, a.H2) : null;
+  const autoD = computeD(room, facadeIndex);
+  const effectiveD = autoD !== null ? String(autoD) : '';
+  const skyVis = f.advOn ? Scoring.skyVisible(a.D, effectiveD, a.h1, a.H1) : null;
+  const groundVis = f.advOn ? Scoring.groundVisible(a.D, effectiveD, a.h2, a.H2) : null;
 
   const advFields = [
     ['D',  'D – Facade → obstacle (m)', a.D],
-    ['d',  'd – Window recess depth (m)', a.d],
     ['h1', 'h1 – Eye → lintel (m)', a.h1],
     ['h2', 'h2 – Eye → sill (m)', a.h2],
     ['H1', 'H1 – Eye → top of obstacle (m)', a.H1],
@@ -486,6 +546,12 @@ function facadeHTML(roomId, f) {
       <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;">CROSS-SECTION GEOMETRY (optional — verifies sky & ground visibility)</div>
       ${crossSectionSVG()}
       <div class="adv-grid">
+        <div class="adv-field">
+          <label>d – Observer distance from window (m)</label>
+          <div style="padding:5px 8px;background:#f3f4f6;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;font-family:monospace;color:${autoD !== null ? 'var(--primary)' : 'var(--muted)'};">
+            ${autoD !== null ? autoD + ' m' : '— enter room depth p above'}
+          </div>
+        </div>
         ${advFields.map(([field, lbl, val]) => `
           <div class="adv-field">
             <label>${lbl}</label>
