@@ -1,121 +1,121 @@
-# Résumé – VISU2.1.5 Accès aux vues
-**Source :** CERTIVEA – Référentiels HQE-B v1.1 et HQE-BD v4.1 – Avril 2025
-**Guide du thème : Confort visuel (pages 42–45/63)**
+# Summary – VISU2.1.5 Access to Views
+**Source:** CERTIVEA – HQE-B v1.1 and HQE-BD v4.1 Frameworks – April 2025
+**Guide theme: Visual Comfort (pages 42–45/63)**
 
 ---
 
-## Objectif
+## Objective
 
-La vue sur l'extérieur assure une connexion visuelle avec l'environnement pour informer les occupants des conditions météorologiques, de l'heure et de l'environnement local. Elle réduit la fatigue liée aux longues périodes passées à l'intérieur.
-
----
-
-## Les trois composantes d'une vue
-
-1. **Ciel**
-2. **Paysage** (bâtiments, nature, horizon)
-3. **Sol** (peut fournir des informations sur les activités)
+Exterior views provide a visual connection with the environment, informing occupants about weather conditions, time of day, and the local surroundings. They help reduce fatigue associated with long periods spent indoors.
 
 ---
 
-## Facteurs influençant la qualité de la vue (depuis un point Q)
+## The Three View Components
 
-- Dimensions des prises de jour
-- Largeur de la vue (angle horizontal)
-- Distance extérieure de la vue
-- Nombre de composantes visibles
-- Qualité de la vue sur l'extérieur
+1. **Sky**
+2. **Landscape** (buildings, nature, horizon)
+3. **Ground** (can provide information about activities)
 
 ---
 
-## Indicateur « Accès aux vues »
+## Factors Influencing View Quality (from a reference point Q)
 
-Inspiré de la norme **EN 17037** (Lumière naturelle dans les bâtiments, décembre 2018).
-Deux critères sont pris en compte : **distance de vue** et **composante de vue**.
+- Dimensions of the daylight openings
+- View width (horizontal angle of vision)
+- Exterior view distance
+- Number of visible components
+- Quality of the view onto the exterior environment
 
-> Les atriums/patios couverts peuvent être considérés comme des espaces extérieurs.
+---
 
-### Méthodes d'évaluation
+## "Access to Views" Indicator
 
-| Méthode | Description |
+Inspired by standard **EN 17037** (Daylight in Buildings, December 2018).
+Two criteria are considered: **view distance** and **view component**.
+
+> Covered atriums/patios may be considered as exterior spaces for this indicator.
+
+### Evaluation Methods
+
+| Method | Description |
 |--------|-------------|
-| Logiciel | Modèle 3D avec environnement dans un rayon ≥ 50 m |
-| Manuelle | Estimation via plans et coupes (photos grand angle possibles) |
-| Bâtiment existant | Photos in-situ et plans |
+| Software | 3D model with surroundings within a radius ≥ 50 m |
+| Manual | Estimation from floor plans and cross-sections (wide-angle photos allowed) |
+| Existing building | On-site photos and floor plans |
 
-**Position de l'observateur :** aux ¾ de la profondeur normale à la façade, au milieu de la façade, regard à **1,30 m du sol**.
-
----
-
-## Barème de points « Accès aux vues »
-
-| Distance de vue | Composantes de vue | Points |
-|----------------|-------------------|--------|
-| > 50 m | Les trois | 6 |
-| ]20 m – 50 m] | Deux des trois | 5 |
-| ]6 m – 20 m] | Paysage | 4 |
-| ]0 m – 6 m] | Ciel seul OU sol seul | 3 |
-| 0 m (locaux aveugles) | Aucune | 0 |
-
-**Score total = Distance de vue + Composantes de vue**
+**Observer position:** at ¾ of the depth perpendicular to the facade, at the centre of the facade, eye level at **1.30 m above the floor**.
 
 ---
 
-## Détermination de la distance de vue
+## "Access to Views" Scoring Table
 
-- Distance entre la façade et les **premiers obstacles visibles**
-- La végétation **n'est pas** considérée comme un obstacle
-- En cas d'obstacles à distances différentes → prendre le **cas le plus défavorable**
+| View Distance | View Components | Points |
+|--------------|----------------|--------|
+| > 50 m | All three | 6 |
+| ]20 m – 50 m] | Two of the three | 5 |
+| ]6 m – 20 m] | Landscape | 4 |
+| ]0 m – 6 m] | Sky only OR ground only | 3 |
+| 0 m (windowless rooms) | None | 0 |
 
----
-
-## Composantes de vue selon la situation urbaine
-
-| Situation | Niveaux | Composante de vue |
-|-----------|---------|-------------------|
-| Ruelle / petite cour intérieure | Premiers et derniers étages | Deux des trois |
-| Ruelle / petite cour intérieure | Étages intermédiaires | Paysage |
-| Urbain dense | RdC et derniers étages | Deux des trois |
-| Urbain dense | Étages intermédiaires | Paysage |
-| Urbain | RdC et derniers étages | Deux des trois |
-| Urbain | Étages intermédiaires | Paysage |
-| Péri-urbain et campagne | Tous niveaux | Les trois |
+**Total score = View Distance points + View Component points**
 
 ---
 
-## Formules (vue en coupe)
+## Determining View Distance
 
-- **Ciel vu si :** `H1 < h1 × (D+d) / d`
-- **Sol vu si :** `H2 < h2 × (D+d) / d`
-
-Avec :
-- `D` : distance façade vitrée → prospect
-- `d` : profondeur de la fenêtre (tableau)
-- `h1` : hauteur œil → linteau
-- `h2` : hauteur œil → allège
-- `H1` : hauteur œil → sommet du prospect
-- `H2` : hauteur œil → base du prospect
+- Distance between the facade and the **first visible obstacles**
+- Vegetation is **not** considered an obstacle
+- If obstacles are at different distances → take the **most unfavourable case**
 
 ---
 
-## Cas particuliers
+## View Components by Urban Context
 
-- **Entrepôt (hors frigorifique) :** la zone à considérer est la zone de préparation.
-- **Postes de travail connus :** calcul possible avec un point focal défini par le demandeur.
-- **Ouvertures sur plusieurs parois :** le point de référence reste le même (¾ ou ½ de profondeur selon le nombre de façades).
-
-### Bâtiments en Rénovation / Exploitation Axe Bâtiment
-
-- Niveau E (4 points) atteint si l'**article R4223-3 du Code du Travail** est respecté.
-- Pour un niveau supérieur, un calcul d'accès aux vues complet est requis.
-
-### Bâtiments en Exploitation Axe Gestion
-
-- Cet indicateur **n'est pas pris en compte**.
+| Situation | Floors | View Component |
+|-----------|--------|----------------|
+| Alley / small inner courtyard | First and top floors | Two of the three |
+| Alley / small inner courtyard | Intermediate floors | Landscape |
+| Dense urban | Ground floor and top floors | Two of the three |
+| Dense urban | Intermediate floors | Landscape |
+| Urban | Ground floor and top floors | Two of the three |
+| Urban | Intermediate floors | Landscape |
+| Peri-urban and rural | All floors | All three |
 
 ---
 
-## Notation finale
+## Formulas (Cross-Section View)
 
-Les points sont attribués par type de local selon les tableaux « Échelles d'évaluation » :
-**0, 4, 8, 12, 16 ou 20 points**
+- **Sky is visible if:** `H1 < h1 × (D+d) / d`
+- **Ground is visible if:** `H2 < h2 × (D+d) / d`
+
+Where:
+- `D` : distance from the glazed facade to the facing obstacle
+- `d` : window recess depth
+- `h1` : height from eye level to the lintel
+- `h2` : height from eye level to the sill
+- `H1` : height from eye level to the top of the obstacle
+- `H2` : height from eye level to the base of the obstacle
+
+---
+
+## Special Cases
+
+- **Warehouse (excluding cold storage):** the zone to consider is the preparation/staging area.
+- **Known workstation positions:** calculation may use a focal point defined by the applicant.
+- **Openings on multiple walls:** the reference point remains the same (¾ or ½ depth depending on the number of glazed facades).
+
+### Renovation / Operation – Building Axis
+
+- Level E (4 points) is achieved if **Article R4223-3 of the French Labour Code** is met.
+- To reach a higher level, a full access-to-views calculation is required.
+
+### Operation – Management Axis
+
+- This indicator is **not taken into account**.
+
+---
+
+## Final Scoring
+
+Points are assigned by room type according to the "Evaluation Scales" tables in the document:
+**0, 4, 8, 12, 16 or 20 points**
