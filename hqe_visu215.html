@@ -332,11 +332,11 @@ const Scoring = {
     const v = parseFloat(d);
     if (isNaN(v) || d === '') return null;
     if (v < 0) return null;
-    if (v === 0) return { label: 'Windowless (0 m)', points: 0 };
-    if (v <= 6)  return { label: ']0 – 6 m]',    points: 3 };
-    if (v <= 20) return { label: ']6 – 20 m]',   points: 4 };
-    if (v <= 50) return { label: ']20 – 50 m]',  points: 5 };
-    return           { label: '> 50 m',           points: 6 };
+    if (v === 0) return { label: 'Windowless (0 m)', subPts: 0 };
+    if (v <= 6)  return { label: ']0 – 6 m]',    subPts: 3 };
+    if (v <= 20) return { label: ']6 – 20 m]',   subPts: 4 };
+    if (v <= 50) return { label: ']20 – 50 m]',  subPts: 5 };
+    return           { label: '> 50 m',           subPts: 6 };
   },
 
   expectedComponents(urbanContext, floorType) {
@@ -361,7 +361,7 @@ const Scoring = {
 
   computeRoom(room) {
     if (room.windowless) {
-      return { pts: 0, distBand: { label: 'Windowless', points: 0 }, compInfo: { label: 'None', points: 0 }, worstFacade: null, mismatch: false };
+      return { pts: 0, distBand: { label: 'Windowless', subPts: 0 }, geomSubPts: null, worstFacade: null, skyVis: null, groundVis: null };
     }
     const active = room.facades.filter(f => f.distance !== '' && f.distance !== null);
     if (active.length === 0) return null;
@@ -385,19 +385,20 @@ const Scoring = {
       groundVis = H2 !== null ? this.groundVisible(worst.distance, effectiveD, a.h2, String(H2)) : null;
     }
 
-    // Geometry-based component score (only when geometry results are available)
-    // Landscape is always assumed visible when distance > 0.
-    let geomPts = null;
+    // Geometry-based component sub-score (landscape always visible when distance > 0)
+    let geomSubPts = null;
     const hasGeom = skyVis !== null && groundVis !== null;
     if (hasGeom) {
-      const visCount = [true, skyVis, groundVis].filter(Boolean).length; // landscape always true
-      geomPts = visCount === 3 ? 6 : visCount === 2 ? 5 : 4; // min is landscape-only = 4
+      const visCount = [true, skyVis, groundVis].filter(Boolean).length;
+      geomSubPts = visCount === 3 ? 6 : visCount === 2 ? 5 : 4; // min is landscape-only
     }
 
-    // Score = distance band points, reduced by geometry if available
-    const pts = geomPts !== null ? Math.min(distBand.points, geomPts) : distBand.points;
+    // Final score = distance sub-score + component sub-score (sum, max 6)
+    const pts = geomSubPts !== null
+      ? distBand.subPts + geomSubPts
+      : distBand.subPts; // no geometry: show distance sub-score only
 
-    return { pts, distBand, geomPts, worstFacade: worst, skyVis, groundVis };
+    return { pts, distBand, geomSubPts, worstFacade: worst, skyVis, groundVis };
   }
 };
 
@@ -680,8 +681,8 @@ function resultHTML(room, result) {
     return `<div class="empty-result">Enter at least one facade distance to compute the score.</div>`;
   }
 
-  const { pts, distBand, geomPts, worstFacade, skyVis, groundVis } = result;
-  const scClass = pts === 6 ? 'sc6' : pts === 5 ? 'sc5' : pts === 4 ? 'sc4' : 'sc3';
+  const { pts, distBand, geomSubPts, worstFacade, skyVis, groundVis } = result;
+  const scClass = pts >= 12 ? 'sc6' : pts >= 10 ? 'sc5' : pts >= 8 ? 'sc4' : pts > 0 ? 'sc3' : 'sc0';
   const hasGeom = skyVis !== null && groundVis !== null;
 
   return `<div class="result-box">
@@ -696,8 +697,8 @@ function resultHTML(room, result) {
           <span class="rv">${esc(worstFacade.label)} — ${worstFacade.distance} m</span>
         </div>
         <div class="result-row">
-          <span class="rk">Distance band</span>
-          <span class="rv">${distBand.label} → ${distBand.points} pts</span>
+          <span class="rk">Distance</span>
+          <span class="rv">${distBand.label} → ${distBand.subPts} pts</span>
         </div>
         ${hasGeom ? `
         <div class="result-row">
@@ -709,18 +710,23 @@ function resultHTML(room, result) {
           <span class="rv" style="color:${groundVis ? '#166534' : '#991b1b'}">${groundVis ? '✓ Visible' : '✗ Not visible'}</span>
         </div>
         <div class="result-row">
-          <span class="rk">Components (geometry)</span>
-          <span class="rv">${geomPts} pts</span>
+          <span class="rk">Components</span>
+          <span class="rv">${geomSubPts} pts</span>
+        </div>
+        <div class="result-row" style="border-top:1px solid var(--border);margin-top:2px;padding-top:4px;">
+          <span class="rk">Total (distance + components)</span>
+          <span class="rv" style="font-size:14px;">${distBand.subPts} + ${geomSubPts} = ${pts} / 12 pts</span>
         </div>` : `
         <div class="result-row">
           <span class="rk">Components</span>
           <span class="rv" style="color:var(--muted);">— open cross-section to verify</span>
+        </div>
+        <div class="result-row" style="border-top:1px solid var(--border);margin-top:2px;padding-top:4px;">
+          <span class="rk">Total (distance only, max 12)</span>
+          <span class="rv" style="font-size:14px;">${pts} / 12 pts</span>
         </div>`}
       </div>
     </div>
-    ${hasGeom && geomPts < distBand.points ? `<div class="warn-strip">
-      ⚠ Geometry limits visible components to ${geomPts} pts — score capped below distance band (${distBand.points} pts).
-    </div>` : ''}
   </div>`;
 }
 
@@ -732,7 +738,7 @@ function renderSummary() {
     const result = Scoring.computeRoom(room);
     const pts = result ? result.pts : (room.windowless ? 0 : null);
     const [bg, fg] = scoreColors(pts);
-    const geomCapped = result && result.geomPts !== null && result.geomPts < result.distBand.points;
+    const geomCapped = result && result.geomSubPts !== null && (result.distBand.subPts + result.geomSubPts) < result.distBand.subPts * 2;
     return `<tr${geomCapped ? ' class="warn-row"' : ''}>
       <td><strong>${esc(room.name)}</strong></td>
       <td>${room.windowless ? '—' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate')}</td>
