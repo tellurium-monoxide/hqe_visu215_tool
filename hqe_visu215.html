@@ -150,11 +150,16 @@
 <main>
   <div class="toolbar">
     <button class="btn-primary" id="btn-add-room">+ Add Room</button>
-    <div style="display:flex;gap:8px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn-secondary btn-sm" id="btn-export">↓ Export JSON</button>
       <label class="btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;">
         ↑ Import JSON
         <input type="file" id="btn-import" accept=".json" style="display:none;">
+      </label>
+      <button class="btn-secondary btn-sm" id="btn-export-csv">↓ Export CSV</button>
+      <label class="btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;">
+        ↑ Import CSV
+        <input type="file" id="btn-import-csv" accept=".csv" style="display:none;">
       </label>
       <button class="btn-secondary btn-sm" id="btn-clear-all">Clear all</button>
     </div>
@@ -838,6 +843,140 @@ function copyCSV() {
     .catch(() => alert('Copy failed — please copy manually.'));
 }
 
+// ─── DATA CSV EXPORT / IMPORT ───────────────────────────────────────────────────
+
+const CSV_FACADE_COUNT = 4;
+
+const CSV_HEADERS = [
+  'name', 'floorType', 'glazedFacades', 'windowless', 'roomP1', 'roomP2', 'roomFloorH',
+  ...Array.from({ length: CSV_FACADE_COUNT }, (_, i) => {
+    const n = i + 1;
+    return [`facade${n}_distance`, `facade${n}_h1`, `facade${n}_h2`, `facade${n}_obstacleTopH`, `facade${n}_advOn`];
+  }).flat(),
+];
+
+function csvCell(v) {
+  const s = String(v == null ? '' : v);
+  return s.includes(',') || s.includes('"') || s.includes('\n')
+    ? '"' + s.replace(/"/g, '""') + '"'
+    : s;
+}
+
+function exportDataCSV() {
+  const rows = state.rooms.map(room => {
+    const cols = [
+      room.name,
+      room.floorType,
+      room.glazedFacades,
+      room.windowless ? 'true' : 'false',
+      room.roomP1,
+      room.roomP2,
+      room.roomFloorH,
+    ];
+    for (let i = 0; i < CSV_FACADE_COUNT; i++) {
+      const f = room.facades[i];
+      if (f) {
+        cols.push(f.distance, f.adv.h1, f.adv.h2, f.adv.obstacleTopH, f.advOn ? 'true' : 'false');
+      } else {
+        cols.push('', '', '', '', '');
+      }
+    }
+    return cols.map(csvCell).join(',');
+  });
+
+  const csv = [CSV_HEADERS.join(','), ...rows].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'hqe_visu215_project.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseCSV(text) {
+  // Splits a CSV text into an array of arrays (handles quoted fields with embedded commas/newlines)
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], next = text[i + 1];
+    if (inQuotes) {
+      if (ch === '"' && next === '"') { field += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { field += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n' || (ch === '\r' && next === '\n')) {
+        if (ch === '\r') i++;
+        row.push(field); field = '';
+        if (row.some(c => c !== '')) rows.push(row);
+        row = [];
+      } else if (ch === '\r') {
+        row.push(field); field = '';
+        if (row.some(c => c !== '')) rows.push(row);
+        row = [];
+      } else {
+        field += ch;
+      }
+    }
+  }
+  row.push(field);
+  if (row.some(c => c !== '')) rows.push(row);
+  return rows;
+}
+
+function importDataCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error('CSV has no data rows');
+
+  const headerRow = rows[0].map(h => h.trim());
+  // Validate required columns
+  const required = ['name', 'floorType', 'glazedFacades', 'windowless'];
+  for (const h of required) {
+    if (!headerRow.includes(h)) throw new Error('Missing column: ' + h);
+  }
+
+  const col = h => headerRow.indexOf(h);
+
+  const rooms = rows.slice(1).map(cells => {
+    const get = h => { const i = col(h); return i >= 0 ? (cells[i] || '').trim() : ''; };
+    const n = Math.min(Math.max(parseInt(get('glazedFacades')) || 1, 1), 4);
+
+    const facades = [];
+    for (let i = 0; i < n; i++) {
+      const fi = i + 1;
+      facades.push({
+        id: uid(),
+        label: 'Facade ' + fi,
+        distance: get('facade' + fi + '_distance'),
+        advOn: get('facade' + fi + '_advOn') === 'true',
+        adv: {
+          h1:           get('facade' + fi + '_h1'),
+          h2:           get('facade' + fi + '_h2'),
+          obstacleTopH: get('facade' + fi + '_obstacleTopH'),
+        },
+      });
+    }
+
+    return {
+      id: uid(),
+      name:          get('name') || 'Room',
+      floorType:     get('floorType') || 'intermediate',
+      glazedFacades: n,
+      windowless:    get('windowless') === 'true',
+      roomP1:        get('roomP1'),
+      roomP2:        get('roomP2'),
+      roomFloorH:    get('roomFloorH'),
+      facades,
+    };
+  });
+
+  if (rooms.length === 0) throw new Error('No rooms found in CSV');
+  state.rooms = rooms;
+  render();
+}
+
 // ─── EVENT DELEGATION ───────────────────────────────────────────────────────────
 
 document.addEventListener('input', e => {
@@ -906,6 +1045,23 @@ document.getElementById('btn-import').addEventListener('change', e => {
       alert('Import failed: ' + err.message);
     }
     e.target.value = ''; // reset so the same file can be re-imported
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('btn-export-csv').addEventListener('click', exportDataCSV);
+
+document.getElementById('btn-import-csv').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      importDataCSV(ev.target.result);
+    } catch (err) {
+      alert('CSV import failed: ' + err.message);
+    }
+    e.target.value = '';
   };
   reader.readAsText(file);
 });
