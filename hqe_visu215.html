@@ -789,44 +789,7 @@ function scoreColors(pts) {
 
 function crossSectionSVG() {
   return `<div class="xsect-wrap">
-    <svg width="320" height="170" viewBox="0 0 320 170" xmlns="http://www.w3.org/2000/svg"
-      style="font-family:monospace;font-size:11px;overflow:visible;">
-      <defs>
-        <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#555"/>
-        </marker>
-      </defs>
-      <!-- Ground line -->
-      <line x1="0" y1="148" x2="320" y2="148" stroke="#bbb" stroke-width="1"/>
-      <!-- Room wall (with window reveal) -->
-      <rect x="8"  y="20" width="18" height="128" fill="#c8cdd4"/>
-      <!-- Window opening -->
-      <rect x="8"  y="58" width="18" height="55" fill="#bde3ff" stroke="#007b6e" stroke-width="1.5"/>
-      <!-- Obstacle building -->
-      <rect x="220" y="48" width="34" height="100" fill="#c8cdd4" stroke="#6b7280" stroke-width="1"/>
-      <!-- Eye point -->
-      <circle cx="70" cy="98" r="4" fill="#007b6e"/>
-      <!-- Label: d (window depth) -->
-      <text x="9" y="52" fill="#007b6e" font-size="10">d</text>
-      <!-- Arrow: h1 (eye to lintel, upward) -->
-      <line x1="55" y1="98" x2="55" y2="58" stroke="#c0392b" stroke-width="1.2" marker-end="url(#arr)"/>
-      <text x="38" y="80" fill="#c0392b">h1</text>
-      <!-- Arrow: h2 (eye to sill, downward) -->
-      <line x1="55" y1="98" x2="55" y2="113" stroke="#c0392b" stroke-width="1.2" marker-end="url(#arr)"/>
-      <text x="38" y="112" fill="#c0392b">h2</text>
-      <!-- Dashed: H1 (eye to top of obstacle) -->
-      <line x1="70" y1="98" x2="220" y2="48" stroke="#1d6fa4" stroke-width="1" stroke-dasharray="5,3"/>
-      <text x="193" y="44" fill="#1d6fa4">H1</text>
-      <!-- Dashed: H2 (eye to base of obstacle) -->
-      <line x1="70" y1="98" x2="220" y2="148" stroke="#1d6fa4" stroke-width="1" stroke-dasharray="5,3"/>
-      <text x="193" y="162" fill="#1d6fa4">H2</text>
-      <!-- D arrow (distance facade to obstacle) -->
-      <line x1="26" y1="155" x2="220" y2="155" stroke="#333" stroke-width="1.2" marker-end="url(#arr)"/>
-      <text x="110" y="168" fill="#333" text-anchor="middle">D</text>
-      <!-- Labels -->
-      <text x="10" y="17" fill="#555" font-size="10">Wall</text>
-      <text x="218" y="44" fill="#555" font-size="10" text-anchor="end">Obstacle</text>
-    </svg>
+    <img src="cross_section.png" alt="Cross-section diagram" style="max-width:100%;height:auto;">
   </div>`;
 }
 
