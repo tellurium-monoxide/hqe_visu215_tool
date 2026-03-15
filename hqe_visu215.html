@@ -851,9 +851,32 @@ const CSV_HEADERS = [
   'name', 'floorType', 'glazedFacades', 'windowless', 'roomP1', 'roomP2', 'roomFloorH',
   ...Array.from({ length: CSV_FACADE_COUNT }, (_, i) => {
     const n = i + 1;
-    return [`facade${n}_distance`, `facade${n}_h1`, `facade${n}_h2`, `facade${n}_obstacleTopH`, `facade${n}_advOn`];
+    return [`facade${n}_distance`, `facade${n}_h1`, `facade${n}_h2`, `facade${n}_obstacleTopH`];
   }).flat(),
 ];
+
+// Returns a deep copy of a state object with advOn stripped from all facades.
+// adv data is kept — only the UI toggle state is internal.
+function stripAdvOn(s) {
+  return {
+    ...s,
+    rooms: s.rooms.map(r => ({
+      ...r,
+      facades: r.facades.map(({ advOn: _drop, ...rest }) => rest),
+    })),
+  };
+}
+
+// Ensures every facade in an imported state has advOn (UI-only, not in exported files).
+function normalizeImported(s) {
+  (s.rooms || []).forEach(r => {
+    (r.facades || []).forEach(f => {
+      if (!f.adv) f.adv = { h1: '', h2: '', obstacleTopH: '' };
+      if (f.advOn === undefined) f.advOn = false;
+    });
+  });
+  return s;
+}
 
 function csvCell(v) {
   const s = String(v == null ? '' : v);
@@ -875,11 +898,7 @@ function exportDataCSV() {
     ];
     for (let i = 0; i < CSV_FACADE_COUNT; i++) {
       const f = room.facades[i];
-      if (f) {
-        cols.push(f.distance, f.adv.h1, f.adv.h2, f.adv.obstacleTopH, f.advOn ? 'true' : 'false');
-      } else {
-        cols.push('', '', '', '', '');
-      }
+      cols.push(f ? f.distance : '', f ? f.adv.h1 : '', f ? f.adv.h2 : '', f ? f.adv.obstacleTopH : '');
     }
     return cols.map(csvCell).join(',');
   });
@@ -950,7 +969,7 @@ function importDataCSV(text) {
         id: uid(),
         label: 'Facade ' + fi,
         distance: get('facade' + fi + '_distance'),
-        advOn: get('facade' + fi + '_advOn') === 'true',
+        advOn: false,
         adv: {
           h1:           get('facade' + fi + '_h1'),
           h2:           get('facade' + fi + '_h2'),
@@ -1021,7 +1040,7 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
 });
 
 document.getElementById('btn-export').addEventListener('click', () => {
-  const json = JSON.stringify(state, null, 2);
+  const json = JSON.stringify(stripAdvOn(state), null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1039,12 +1058,12 @@ document.getElementById('btn-import').addEventListener('change', e => {
     try {
       const imported = JSON.parse(ev.target.result);
       if (!imported.rooms || !Array.isArray(imported.rooms)) throw new Error('Invalid format');
-      state = imported;
+      state = normalizeImported(imported);
       render();
     } catch (err) {
       alert('Import failed: ' + err.message);
     }
-    e.target.value = ''; // reset so the same file can be re-imported
+    e.target.value = '';
   };
   reader.readAsText(file);
 });
