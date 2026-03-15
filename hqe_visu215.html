@@ -387,15 +387,12 @@ const Scoring = {
     if (!distBand) return null;
 
     const autoD = computeD(room, worstIndex);
-    let skyVis = null, groundVis = null;
-    if (worst.advOn) {
-      const a = worst.adv;
-      const effectiveD = autoD !== null ? String(autoD) : '';
-      const H1 = computeH1(room.roomFloorH, a);
-      const H2 = computeH2(room.roomFloorH);
-      skyVis    = H1 !== null ? this.skyVisible(worst.distance, effectiveD, a.h1, String(H1))    : null;
-      groundVis = H2 !== null ? this.groundVisible(worst.distance, effectiveD, a.h2, String(H2)) : null;
-    }
+    const a = worst.adv;
+    const effectiveD = autoD !== null ? String(autoD) : '';
+    const H1 = computeH1(room.roomFloorH, a);
+    const H2 = computeH2(room.roomFloorH);
+    const skyVis    = H1 !== null ? this.skyVisible(worst.distance, effectiveD, a.h1, String(H1))    : null;
+    const groundVis = H2 !== null ? this.groundVisible(worst.distance, effectiveD, a.h2, String(H2)) : null;
 
     // Geometry-based component sub-score (landscape always visible when distance > 0)
     let geomSubPts = null;
@@ -601,8 +598,8 @@ function facadeHTML(room, f, facadeIndex) {
   const effectiveD = autoD !== null ? String(autoD) : '';
   const H1 = computeH1(room.roomFloorH, a);
   const H2 = computeH2(room.roomFloorH);
-  const skyVis    = f.advOn ? (H1 !== null ? Scoring.skyVisible(f.distance, effectiveD, a.h1, String(H1))    : null) : null;
-  const groundVis = f.advOn ? (H2 !== null ? Scoring.groundVisible(f.distance, effectiveD, a.h2, String(H2)) : null) : null;
+  const skyVis    = H1 !== null ? Scoring.skyVisible(f.distance, effectiveD, a.h1, String(H1))    : null;
+  const groundVis = H2 !== null ? Scoring.groundVisible(f.distance, effectiveD, a.h2, String(H2)) : null;
 
   return `
   <div style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:8px;">
