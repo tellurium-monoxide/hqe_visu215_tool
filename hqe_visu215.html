@@ -207,7 +207,7 @@ function newFacade(index) {
     label: 'Facade ' + index,
     distance: '',
     advOn: false,
-    adv: { h1: '', h2: '', obstacleTopH: '' },
+    adv: { sillH: '', windowH: '', obstacleTopH: '' },
   };
 }
 
@@ -314,15 +314,37 @@ function computeD(room, facadeIndex) {
 }
 
 // ─── H1 / H2 COMPUTATION ──────────────────────────────────────────────────────
-// eye_height = floor_height + 1.30 m (HQE standard observer eye level)
-// H1 = obstacle_top  − eye_height  (positive = obstacle top is above eye)
-// H2 = eye_height    − obstacle_base (positive = obstacle base is below eye)
+// eye_height = floor_height + 1.30 m  (HQE standard observer eye level)
+//
+// Window geometry (relative to room floor, independent of roomFloorH):
+//   h1 = (sillH + windowH) − 1.30   (eye → lintel,  positive = lintel above eye)
+//   h2 = 1.30 − sillH               (eye → sill,    positive = sill below eye)
+//
+// Obstacle geometry (absolute heights):
+//   H1 = obstacle_top − eye_height  (positive = obstacle top above eye)
+//   H2 = eye_height                 (obstacle base = ground = 0)
 
 function eyeHeight(floorH) {
   const v = parseFloat(floorH);
   return isNaN(v) ? null : Math.round((v + 1.30) * 100) / 100;
 }
 
+// Small h1: height from observer eye to window lintel (window geometry only)
+function computeh1(adv) {
+  const sill = parseFloat(adv.sillH);
+  const win  = parseFloat(adv.windowH);
+  if (isNaN(sill) || isNaN(win)) return null;
+  return Math.round((sill + win - 1.30) * 100) / 100;
+}
+
+// Small h2: height from window sill to observer eye (window geometry only)
+function computeh2(adv) {
+  const sill = parseFloat(adv.sillH);
+  if (isNaN(sill)) return null;
+  return Math.round((1.30 - sill) * 100) / 100;
+}
+
+// Capital H1: height from observer eye to obstacle top (absolute)
 function computeH1(floorH, adv) {
   const eye = eyeHeight(floorH);
   const top = parseFloat(adv.obstacleTopH);
@@ -330,10 +352,11 @@ function computeH1(floorH, adv) {
   return Math.round((top - eye) * 100) / 100;
 }
 
+// Capital H2: eye height above ground (obstacle base = 0)
 function computeH2(floorH) {
   const eye = eyeHeight(floorH);
   if (eye === null) return null;
-  return Math.round(eye * 100) / 100; // obstacle base = 0 (ground level)
+  return Math.round(eye * 100) / 100;
 }
 
 // ─── SCORING ENGINE ────────────────────────────────────────────────────────────
@@ -389,10 +412,12 @@ const Scoring = {
     const autoD = computeD(room, worstIndex);
     const a = worst.adv;
     const effectiveD = autoD !== null ? String(autoD) : '';
+    const h1 = computeh1(a);
+    const h2 = computeh2(a);
     const H1 = computeH1(room.roomFloorH, a);
     const H2 = computeH2(room.roomFloorH);
-    const skyVis    = H1 !== null ? this.skyVisible(worst.distance, effectiveD, a.h1, String(H1))    : null;
-    const groundVis = H2 !== null ? this.groundVisible(worst.distance, effectiveD, a.h2, String(H2)) : null;
+    const skyVis    = (h1 !== null && H1 !== null) ? this.skyVisible(worst.distance, effectiveD, String(h1), String(H1))    : null;
+    const groundVis = (h2 !== null && H2 !== null) ? this.groundVisible(worst.distance, effectiveD, String(h2), String(H2)) : null;
 
     // Geometry-based component sub-score (landscape always visible when distance > 0)
     let geomSubPts = null;
@@ -447,9 +472,12 @@ function renderResultsOnly() {
 
     // Update computed displays in open advanced panels
     room.facades.forEach((f, i) => {
-      const dEl  = document.getElementById('d-disp-'  + room.id + '-' + f.id);
-      const h1El = document.getElementById('H1-disp-' + room.id + '-' + f.id);
-      const h2El = document.getElementById('H2-disp-' + room.id + '-' + f.id);
+      const pfx = room.id + '-' + f.id;
+      const dEl  = document.getElementById('d-disp-'  + pfx);
+      const h1El = document.getElementById('h1-disp-' + pfx);
+      const h2El = document.getElementById('h2-disp-' + pfx);
+      const H1El = document.getElementById('H1-disp-' + pfx);
+      const H2El = document.getElementById('H2-disp-' + pfx);
 
       if (dEl) {
         const autoD = computeD(room, i);
@@ -457,14 +485,24 @@ function renderResultsOnly() {
         dEl.textContent = autoD !== null ? autoD + ' m' : '— enter room depth p above';
       }
       if (h1El) {
-        const H1 = computeH1(room.roomFloorH, f.adv);
-        h1El.style.color = H1 !== null ? 'var(--primary)' : 'var(--muted)';
-        h1El.textContent = H1 !== null ? H1 + ' m' : '— enter floor height & obstacle height';
+        const h1 = computeh1(f.adv);
+        h1El.style.color = h1 !== null ? 'var(--primary)' : 'var(--muted)';
+        h1El.textContent = h1 !== null ? h1 + ' m' : '— enter sill height & window height';
       }
       if (h2El) {
+        const h2 = computeh2(f.adv);
+        h2El.style.color = h2 !== null ? 'var(--primary)' : 'var(--muted)';
+        h2El.textContent = h2 !== null ? h2 + ' m' : '— enter sill height';
+      }
+      if (H1El) {
+        const H1 = computeH1(room.roomFloorH, f.adv);
+        H1El.style.color = H1 !== null ? 'var(--primary)' : 'var(--muted)';
+        H1El.textContent = H1 !== null ? H1 + ' m' : '— enter floor & obstacle heights';
+      }
+      if (H2El) {
         const H2 = computeH2(room.roomFloorH);
-        h2El.style.color = H2 !== null ? 'var(--primary)' : 'var(--muted)';
-        h2El.textContent = H2 !== null ? H2 + ' m' : '— enter room floor height';
+        H2El.style.color = H2 !== null ? 'var(--primary)' : 'var(--muted)';
+        H2El.textContent = H2 !== null ? H2 + ' m' : '— enter room floor height';
       }
     });
   });
@@ -596,10 +634,12 @@ function facadeHTML(room, f, facadeIndex) {
   const a = f.adv;
   const autoD = computeD(room, facadeIndex);
   const effectiveD = autoD !== null ? String(autoD) : '';
+  const h1 = computeh1(a);
+  const h2 = computeh2(a);
   const H1 = computeH1(room.roomFloorH, a);
   const H2 = computeH2(room.roomFloorH);
-  const skyVis    = H1 !== null ? Scoring.skyVisible(f.distance, effectiveD, a.h1, String(H1))    : null;
-  const groundVis = H2 !== null ? Scoring.groundVisible(f.distance, effectiveD, a.h2, String(H2)) : null;
+  const skyVis    = (h1 !== null && H1 !== null) ? Scoring.skyVisible(f.distance, effectiveD, String(h1), String(H1))    : null;
+  const groundVis = (h2 !== null && H2 !== null) ? Scoring.groundVisible(f.distance, effectiveD, String(h2), String(H2)) : null;
 
   return `
   <div style="border:1px solid var(--border);border-radius:4px;padding:10px;margin-bottom:8px;">
@@ -625,14 +665,14 @@ function facadeHTML(room, f, facadeIndex) {
       </div>
       <div class="adv-grid">
         <div class="adv-field">
-          <label>h1 – Eye → lintel (m)</label>
-          <input type="number" step="0.01" value="${a.h1}"
-            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="h1">
+          <label>Sill height above floor (m)</label>
+          <input type="number" step="0.01" value="${a.sillH}" placeholder="e.g. 0.9"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="sillH">
         </div>
         <div class="adv-field">
-          <label>h2 – Eye → sill (m)</label>
-          <input type="number" step="0.01" value="${a.h2}"
-            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="h2">
+          <label>Window height (m)</label>
+          <input type="number" step="0.01" value="${a.windowH}" placeholder="e.g. 1.5"
+            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="windowH">
         </div>
         <div class="adv-field">
           <label>Obstacle top height (m)</label>
@@ -640,11 +680,23 @@ function facadeHTML(room, f, facadeIndex) {
             data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="obstacleTopH">
         </div>
       </div>
-      <div class="adv-grid" style="margin-bottom:10px;">
+      <div class="adv-grid" style="margin-bottom:10px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));">
         <div class="adv-field">
           <label>d – Observer dist. from window (m)</label>
           <div id="d-disp-${room.id}-${f.id}" style="${dispStyle(autoD !== null)}">
             ${autoD !== null ? autoD + ' m' : '— enter room depth p above'}
+          </div>
+        </div>
+        <div class="adv-field">
+          <label>h1 = lintel − eye (m)</label>
+          <div id="h1-disp-${room.id}-${f.id}" style="${dispStyle(h1 !== null)}">
+            ${h1 !== null ? h1 + ' m' : '— enter sill height & window height'}
+          </div>
+        </div>
+        <div class="adv-field">
+          <label>h2 = eye − sill (m)</label>
+          <div id="h2-disp-${room.id}-${f.id}" style="${dispStyle(h2 !== null)}">
+            ${h2 !== null ? h2 + ' m' : '— enter sill height'}
           </div>
         </div>
         <div class="adv-field">
@@ -654,9 +706,9 @@ function facadeHTML(room, f, facadeIndex) {
           </div>
         </div>
         <div class="adv-field">
-          <label>H2 = eye height (obstacle base = 0)</label>
+          <label>H2 = eye height above ground (m)</label>
           <div id="H2-disp-${room.id}-${f.id}" style="${dispStyle(H2 !== null)}">
-            ${H2 !== null ? H2 + ' m' : '— enter floor height (base = 0)'}
+            ${H2 !== null ? H2 + ' m' : '— enter room floor height'}
           </div>
         </div>
       </div>
@@ -848,7 +900,7 @@ const CSV_HEADERS = [
   'name', 'floorType', 'glazedFacades', 'windowless', 'roomP1', 'roomP2', 'roomFloorH',
   ...Array.from({ length: CSV_FACADE_COUNT }, (_, i) => {
     const n = i + 1;
-    return [`facade${n}_distance`, `facade${n}_h1`, `facade${n}_h2`, `facade${n}_obstacleTopH`];
+    return [`facade${n}_distance`, `facade${n}_sillH`, `facade${n}_windowH`, `facade${n}_obstacleTopH`];
   }).flat(),
 ];
 
@@ -868,7 +920,7 @@ function stripAdvOn(s) {
 function normalizeImported(s) {
   (s.rooms || []).forEach(r => {
     (r.facades || []).forEach(f => {
-      if (!f.adv) f.adv = { h1: '', h2: '', obstacleTopH: '' };
+      if (!f.adv) f.adv = { sillH: '', windowH: '', obstacleTopH: '' };
       if (f.advOn === undefined) f.advOn = false;
     });
   });
@@ -895,7 +947,7 @@ function exportDataCSV() {
     ];
     for (let i = 0; i < CSV_FACADE_COUNT; i++) {
       const f = room.facades[i];
-      cols.push(f ? f.distance : '', f ? f.adv.h1 : '', f ? f.adv.h2 : '', f ? f.adv.obstacleTopH : '');
+      cols.push(f ? f.distance : '', f ? f.adv.sillH : '', f ? f.adv.windowH : '', f ? f.adv.obstacleTopH : '');
     }
     return cols.map(csvCell).join(',');
   });
@@ -968,8 +1020,8 @@ function importDataCSV(text) {
         distance: get('facade' + fi + '_distance'),
         advOn: false,
         adv: {
-          h1:           get('facade' + fi + '_h1'),
-          h2:           get('facade' + fi + '_h2'),
+          sillH:        get('facade' + fi + '_sillH'),
+          windowH:      get('facade' + fi + '_windowH'),
           obstacleTopH: get('facade' + fi + '_obstacleTopH'),
         },
       });
