@@ -931,7 +931,7 @@ function normalizeImported(s) {
 
 function csvCell(v) {
   const s = String(v == null ? '' : v);
-  return s.includes(',') || s.includes('"') || s.includes('\n')
+  return s.includes(';') || s.includes('"') || s.includes('\n')
     ? '"' + s.replace(/"/g, '""') + '"'
     : s;
 }
@@ -951,10 +951,10 @@ function exportDataCSV() {
       const f = room.facades[i];
       cols.push(f ? f.distance : '', f ? f.adv.sillH : '', f ? f.adv.windowH : '', f ? f.adv.obstacleTopH : '');
     }
-    return cols.map(csvCell).join(',');
+    return cols.map(csvCell).join(';');
   });
 
-  const csv = [CSV_HEADERS.join(','), ...rows].join('\r\n');
+  const csv = [CSV_HEADERS.join(';'), ...rows].join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -976,7 +976,7 @@ function parseCSV(text) {
       else { field += ch; }
     } else {
       if (ch === '"') { inQuotes = true; }
-      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === ';') { row.push(field); field = ''; }
       else if (ch === '\n' || (ch === '\r' && next === '\n')) {
         if (ch === '\r') i++;
         row.push(field); field = '';
