@@ -150,7 +150,14 @@
 <main>
   <div class="toolbar">
     <button class="btn-primary" id="btn-add-room">+ Add Room</button>
-    <button class="btn-secondary btn-sm" id="btn-clear-all">Clear all</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary btn-sm" id="btn-export">↓ Export JSON</button>
+      <label class="btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;">
+        ↑ Import JSON
+        <input type="file" id="btn-import" accept=".json" style="display:none;">
+      </label>
+      <button class="btn-secondary btn-sm" id="btn-clear-all">Clear all</button>
+    </div>
   </div>
   <div class="project-bar">
     <div>
@@ -418,6 +425,7 @@ function render() {
   renderProjectBar();
   renderRooms();
   renderSummary();
+  try { localStorage.setItem('hqe_visu215', JSON.stringify(state)); } catch(e) {}
 
   if (focusSel) {
     const el = document.querySelector(focusSel);
@@ -873,6 +881,35 @@ document.getElementById('btn-clear-all').addEventListener('click', () => {
   if (state.rooms.length > 0 && confirm('Clear all rooms?')) { state.rooms = []; render(); }
 });
 
+document.getElementById('btn-export').addEventListener('click', () => {
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'hqe_visu215_project.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btn-import').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.rooms || !Array.isArray(imported.rooms)) throw new Error('Invalid format');
+      state = imported;
+      render();
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    }
+    e.target.value = ''; // reset so the same file can be re-imported
+  };
+  reader.readAsText(file);
+});
+
 // ─── UTILS ──────────────────────────────────────────────────────────────────────
 
 function dispStyle(hasValue) {
@@ -885,7 +922,11 @@ function esc(s) {
 }
 
 // ─── INIT ───────────────────────────────────────────────────────────────────────
-addRoom();
+try {
+  const saved = localStorage.getItem('hqe_visu215');
+  if (saved) state = JSON.parse(saved);
+} catch(e) {}
+if (state.rooms.length === 0) addRoom(); else render();
 </script>
 </body>
 </html>
