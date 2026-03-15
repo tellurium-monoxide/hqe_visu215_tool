@@ -374,8 +374,6 @@ const Scoring = {
     const distBand = this.distanceBand(worst.distance);
     if (!distBand) return null;
 
-    const compInfo = this.expectedComponents(state.urbanContext, room.floorType);
-
     const autoD = computeD(room, worstIndex);
     let skyVis = null, groundVis = null;
     if (worst.advOn) {
@@ -387,11 +385,19 @@ const Scoring = {
       groundVis = H2 !== null ? this.groundVisible(worst.distance, effectiveD, a.h2, String(H2)) : null;
     }
 
-    // Score = min(distance points, component points)
-    const pts = Math.min(distBand.points, compInfo.points);
-    const mismatch = distBand.points !== compInfo.points;
+    // Geometry-based component score (only when geometry results are available)
+    // Landscape is always assumed visible when distance > 0.
+    let geomPts = null;
+    const hasGeom = skyVis !== null && groundVis !== null;
+    if (hasGeom) {
+      const visCount = [true, skyVis, groundVis].filter(Boolean).length; // landscape always true
+      geomPts = visCount === 3 ? 6 : visCount === 2 ? 5 : 4; // min is landscape-only = 4
+    }
 
-    return { pts, distBand, compInfo, worstFacade: worst, skyVis, groundVis, mismatch };
+    // Score = distance band points, reduced by geometry if available
+    const pts = geomPts !== null ? Math.min(distBand.points, geomPts) : distBand.points;
+
+    return { pts, distBand, geomPts, worstFacade: worst, skyVis, groundVis };
   }
 };
 
@@ -674,8 +680,9 @@ function resultHTML(room, result) {
     return `<div class="empty-result">Enter at least one facade distance to compute the score.</div>`;
   }
 
-  const { pts, distBand, compInfo, worstFacade, skyVis, groundVis, mismatch } = result;
+  const { pts, distBand, geomPts, worstFacade, skyVis, groundVis } = result;
   const scClass = pts === 6 ? 'sc6' : pts === 5 ? 'sc5' : pts === 4 ? 'sc4' : 'sc3';
+  const hasGeom = skyVis !== null && groundVis !== null;
 
   return `<div class="result-box">
     <div class="result-header">Result – Access to Views</div>
@@ -692,27 +699,27 @@ function resultHTML(room, result) {
           <span class="rk">Distance band</span>
           <span class="rv">${distBand.label} → ${distBand.points} pts</span>
         </div>
+        ${hasGeom ? `
         <div class="result-row">
-          <span class="rk">Expected components</span>
-          <span class="rv">${compInfo.label} → ${compInfo.points} pts</span>
-        </div>
-        <div class="result-row">
-          <span class="rk">Score (min of both)</span>
-          <span class="rv" style="font-size:14px;">${pts} pts</span>
-        </div>
-        ${skyVis !== null ? `<div class="result-row">
-          <span class="rk">Sky visibility (geometry)</span>
+          <span class="rk">Sky (geometry)</span>
           <span class="rv" style="color:${skyVis ? '#166534' : '#991b1b'}">${skyVis ? '✓ Visible' : '✗ Not visible'}</span>
-        </div>` : ''}
-        ${groundVis !== null ? `<div class="result-row">
-          <span class="rk">Ground visibility (geometry)</span>
+        </div>
+        <div class="result-row">
+          <span class="rk">Ground (geometry)</span>
           <span class="rv" style="color:${groundVis ? '#166534' : '#991b1b'}">${groundVis ? '✓ Visible' : '✗ Not visible'}</span>
-        </div>` : ''}
+        </div>
+        <div class="result-row">
+          <span class="rk">Components (geometry)</span>
+          <span class="rv">${geomPts} pts</span>
+        </div>` : `
+        <div class="result-row">
+          <span class="rk">Components</span>
+          <span class="rv" style="color:var(--muted);">— open cross-section to verify</span>
+        </div>`}
       </div>
     </div>
-    ${mismatch ? `<div class="warn-strip">
-      ⚠ Distance band (${distBand.points} pts) and urban context components (${compInfo.points} pts) do not match.
-      Score is capped at the lower value (${pts} pts).
+    ${hasGeom && geomPts < distBand.points ? `<div class="warn-strip">
+      ⚠ Geometry limits visible components to ${geomPts} pts — score capped below distance band (${distBand.points} pts).
     </div>` : ''}
   </div>`;
 }
@@ -721,18 +728,16 @@ function renderSummary() {
   const c = document.getElementById('summary-container');
   if (state.rooms.length === 0) { c.innerHTML = ''; return; }
 
-  const hasMismatch = state.rooms.some(r => { const res = Scoring.computeRoom(r); return res && res.mismatch; });
-
   const rows = state.rooms.map(room => {
     const result = Scoring.computeRoom(room);
     const pts = result ? result.pts : (room.windowless ? 0 : null);
     const [bg, fg] = scoreColors(pts);
-    return `<tr${result && result.mismatch ? ' class="warn-row"' : ''}>
+    const geomCapped = result && result.geomPts !== null && result.geomPts < result.distBand.points;
+    return `<tr${geomCapped ? ' class="warn-row"' : ''}>
       <td><strong>${esc(room.name)}</strong></td>
       <td>${room.windowless ? '—' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate')}</td>
       <td>${result ? result.worstFacade.distance + ' m' : room.windowless ? '0 m' : '—'}</td>
       <td>${result ? result.distBand.label : room.windowless ? 'Windowless' : '—'}</td>
-      <td>${result ? result.compInfo.label : room.windowless ? 'None' : '—'}</td>
       <td><span class="schip" style="background:${bg};color:${fg}">${pts !== null ? pts + ' pts' : '—'}</span></td>
     </tr>`;
   }).join('');
@@ -746,11 +751,11 @@ function renderSummary() {
     <table>
       <thead><tr>
         <th>Room</th><th>Floor</th>
-        <th>Min Distance</th><th>Distance Band</th><th>Components</th><th>Score</th>
+        <th>Min Distance</th><th>Distance Band</th><th>Score</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    ${hasMismatch ? '<div class="warn-strip" style="border-radius:0 0 6px 6px;border:1px solid #fcd34d;border-top:none;margin-top:-1px;">⚠ Amber rows: distance band and urban context component level do not match. Score is capped at the lower value.</div>' : ''}
+    ${rows.includes('warn-row') ? '<div class="warn-strip" style="border-radius:0 0 6px 6px;border:1px solid #fcd34d;border-top:none;margin-top:-1px;">⚠ Amber rows: cross-section geometry limits visible components below the distance band score.</div>' : ''}
   </div>
   <details class="info-block" style="margin-top:16px;">
     <summary>Scoring reference table (HQE VISU2.1.5)</summary>
@@ -828,7 +833,7 @@ function crossSectionSVG() {
 // ─── CSV EXPORT ─────────────────────────────────────────────────────────────────
 
 function copyCSV() {
-  const headers = ['Room','Floor','Min Distance (m)','Distance Band','Components','Score (pts)'];
+  const headers = ['Room','Floor','Min Distance (m)','Distance Band','Score (pts)'];
   const rows = state.rooms.map(room => {
     const result = Scoring.computeRoom(room);
     const pts = result ? result.pts : (room.windowless ? 0 : '');
@@ -837,7 +842,6 @@ function copyCSV() {
       room.windowless ? '' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate'),
       result ? result.worstFacade.distance : room.windowless ? '0' : '',
       result ? result.distBand.label : room.windowless ? 'Windowless' : '',
-      result ? result.compInfo.label : room.windowless ? 'None' : '',
       pts,
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
   });
