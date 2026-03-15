@@ -739,12 +739,17 @@ function renderSummary() {
     const pts = result ? result.pts : (room.windowless ? 0 : null);
     const [bg, fg] = scoreColors(pts);
     const geomCapped = result && result.geomSubPts !== null && (result.distBand.subPts + result.geomSubPts) < result.distBand.subPts * 2;
+    const viewAccess = room.windowless ? 'None'
+      : !result ? '—'
+      : result.skyVis !== null && result.groundVis !== null
+        ? [result.skyVis ? 'Sky' : null, 'Landscape', result.groundVis ? 'Ground' : null].filter(Boolean).join(', ')
+        : result.distBand.label;
     return `<tr${geomCapped ? ' class="warn-row"' : ''}>
       <td><strong>${esc(room.name)}</strong></td>
       <td>${room.windowless ? '—' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate')}</td>
-      <td>${result ? result.worstFacade.distance + ' m' : room.windowless ? '0 m' : '—'}</td>
       <td>${result ? result.distBand.label : room.windowless ? 'Windowless' : '—'}</td>
-      <td><span class="schip" style="background:${bg};color:${fg}">${pts !== null ? pts + ' pts' : '—'}</span></td>
+      <td>${viewAccess}</td>
+      <td><span class="schip" style="background:${bg};color:${fg}">${pts !== null ? pts + ' / 12 pts' : '—'}</span></td>
     </tr>`;
   }).join('');
 
@@ -757,7 +762,7 @@ function renderSummary() {
     <table>
       <thead><tr>
         <th>Room</th><th>Floor</th>
-        <th>Min Distance</th><th>Distance Band</th><th>Score</th>
+        <th>Distance Band</th><th>View Access</th><th>Score</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -802,15 +807,20 @@ function crossSectionSVG() {
 // ─── CSV EXPORT ─────────────────────────────────────────────────────────────────
 
 function copyCSV() {
-  const headers = ['Room','Floor','Min Distance (m)','Distance Band','Score (pts)'];
+  const headers = ['Room','Floor','Distance Band','View Access','Score (/12)'];
   const rows = state.rooms.map(room => {
     const result = Scoring.computeRoom(room);
     const pts = result ? result.pts : (room.windowless ? 0 : '');
+    const viewAccess = room.windowless ? 'None'
+      : !result ? ''
+      : result.skyVis !== null && result.groundVis !== null
+        ? [result.skyVis ? 'Sky' : null, 'Landscape', result.groundVis ? 'Ground' : null].filter(Boolean).join(', ')
+        : result.distBand.label;
     return [
       room.name,
       room.windowless ? '' : (room.floorType === 'ground_top' ? 'Ground/Top' : 'Intermediate'),
-      result ? result.worstFacade.distance : room.windowless ? '0' : '',
       result ? result.distBand.label : room.windowless ? 'Windowless' : '',
+      viewAccess,
       pts,
     ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
   });
