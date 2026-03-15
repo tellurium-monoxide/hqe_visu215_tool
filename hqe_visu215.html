@@ -195,7 +195,7 @@ function newFacade(index) {
     label: 'Facade ' + index,
     distance: '',
     advOn: false,
-    adv: { h1: '', h2: '', floorH: '', obstacleTopH: '' },
+    adv: { h1: '', h2: '', obstacleTopH: '' },
   };
 }
 
@@ -206,8 +206,9 @@ function addRoom() {
     floorType: 'intermediate',
     glazedFacades: 1,
     windowless: false,
-    roomP1: '',  // depth perpendicular to facades 1 & 3 (m)
-    roomP2: '',  // depth perpendicular to facades 2 & 4 (m)
+    roomP1: '',    // depth perpendicular to facades 1 & 3 (m)
+    roomP2: '',    // depth perpendicular to facades 2 & 4 (m)
+    roomFloorH: '', // floor height of this room (m)
     facades: [newFacade(1)],
   });
   render();
@@ -305,20 +306,20 @@ function computeD(room, facadeIndex) {
 // H1 = obstacle_top  − eye_height  (positive = obstacle top is above eye)
 // H2 = eye_height    − obstacle_base (positive = obstacle base is below eye)
 
-function eyeHeight(adv) {
-  const v = parseFloat(adv.floorH);
+function eyeHeight(floorH) {
+  const v = parseFloat(floorH);
   return isNaN(v) ? null : Math.round((v + 1.30) * 100) / 100;
 }
 
-function computeH1(adv) {
-  const eye = eyeHeight(adv);
+function computeH1(floorH, adv) {
+  const eye = eyeHeight(floorH);
   const top = parseFloat(adv.obstacleTopH);
   if (eye === null || isNaN(top)) return null;
   return Math.round((top - eye) * 100) / 100;
 }
 
-function computeH2(adv) {
-  const eye = eyeHeight(adv);
+function computeH2(floorH) {
+  const eye = eyeHeight(floorH);
   if (eye === null) return null;
   return Math.round(eye * 100) / 100; // obstacle base = 0 (ground level)
 }
@@ -380,8 +381,8 @@ const Scoring = {
     if (worst.advOn) {
       const a = worst.adv;
       const effectiveD = autoD !== null ? String(autoD) : '';
-      const H1 = computeH1(a);
-      const H2 = computeH2(a);
+      const H1 = computeH1(room.roomFloorH, a);
+      const H2 = computeH2(room.roomFloorH);
       skyVis    = H1 !== null ? this.skyVisible(worst.distance, effectiveD, a.h1, String(H1))    : null;
       groundVis = H2 !== null ? this.groundVisible(worst.distance, effectiveD, a.h2, String(H2)) : null;
     }
@@ -439,14 +440,14 @@ function renderResultsOnly() {
         dEl.textContent = autoD !== null ? autoD + ' m' : '— enter room depth p above';
       }
       if (h1El) {
-        const H1 = computeH1(f.adv);
+        const H1 = computeH1(room.roomFloorH, f.adv);
         h1El.style.color = H1 !== null ? 'var(--primary)' : 'var(--muted)';
-        h1El.textContent = H1 !== null ? H1 + ' m' : '— enter floor & obstacle heights';
+        h1El.textContent = H1 !== null ? H1 + ' m' : '— enter floor height & obstacle height';
       }
       if (h2El) {
-        const H2 = computeH2(f.adv);
+        const H2 = computeH2(room.roomFloorH);
         h2El.style.color = H2 !== null ? 'var(--primary)' : 'var(--muted)';
-        h2El.textContent = H2 !== null ? H2 + ' m' : '— enter floor height';
+        h2El.textContent = H2 !== null ? H2 + ' m' : '— enter room floor height';
       }
     });
   });
@@ -531,6 +532,12 @@ function roomHTML(room) {
             data-action="update-room" data-room="${room.id}" data-field="roomP2"
             style="width:120px;">
         </div>` : ''}
+        <div class="form-group">
+          <label class="field-label">Room floor height (m)</label>
+          <input type="number" step="0.01" value="${room.roomFloorH}" placeholder="e.g. 0 or 3.5"
+            data-action="update-room" data-room="${room.id}" data-field="roomFloorH"
+            style="width:120px;">
+        </div>
       </div>
 
       <div class="form-row">
@@ -572,8 +579,8 @@ function facadeHTML(room, f, facadeIndex) {
   const a = f.adv;
   const autoD = computeD(room, facadeIndex);
   const effectiveD = autoD !== null ? String(autoD) : '';
-  const H1 = computeH1(a);
-  const H2 = computeH2(a);
+  const H1 = computeH1(room.roomFloorH, a);
+  const H2 = computeH2(room.roomFloorH);
   const skyVis    = f.advOn ? (H1 !== null ? Scoring.skyVisible(f.distance, effectiveD, a.h1, String(H1))    : null) : null;
   const groundVis = f.advOn ? (H2 !== null ? Scoring.groundVisible(f.distance, effectiveD, a.h2, String(H2)) : null) : null;
 
@@ -609,11 +616,6 @@ function facadeHTML(room, f, facadeIndex) {
           <label>h2 – Eye → sill (m)</label>
           <input type="number" step="0.01" value="${a.h2}"
             data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="h2">
-        </div>
-        <div class="adv-field">
-          <label>Observer floor height (m)</label>
-          <input type="number" step="0.01" value="${a.floorH}" placeholder="e.g. 0 or 3.5"
-            data-action="update-adv" data-room="${roomId}" data-facade="${f.id}" data-field="floorH">
         </div>
         <div class="adv-field">
           <label>Obstacle top height (m)</label>
